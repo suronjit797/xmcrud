@@ -1,0 +1,16 @@
+.qudo
+
+.env
+.env.*
+.todo
+
+# Dependency directories
+node_modules/
+dist/
+dump/
+**__dump
+
+note*
+
+/*.zip
+* copy
