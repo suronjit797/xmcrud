@@ -2,7 +2,7 @@ import { RequestHandler } from "express";
 import type ioredisType from "ioredis";
 import { Model, Types } from "mongoose";
 import { ApiError, sendResponse } from "../helpers/globalHelper";
-import { IMeta } from "../Types/types";
+import { IMeta } from "../Types";
 import redisGenerateCacheKey from "../helpers/redisCacheKeyGenerator";
 import { filterHelper, paginationHelper } from "../helpers/queryHelper";
 

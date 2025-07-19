@@ -1,11 +1,17 @@
 import { Document, SortOrder } from "mongoose";
-import { IPagination, ISortCondition, TFilter } from "../Types/types";
+import { IPagination, ISortCondition, TFilter } from "../Types";
 
 // Supported operators for query
 const operatorsMap: Record<string, string> = {
-  _gt: "$gt", _lt: "$lt", _gte: "$gte", _lte: "$lte",
-  _ne: "$ne", _in: "$in", _nin: "$nin",
-  _regex: "$regex", _exists: "$exists",
+  _gt: "$gt",
+  _lt: "$lt",
+  _gte: "$gte",
+  _lte: "$lte",
+  _ne: "$ne",
+  _in: "$in",
+  _nin: "$nin",
+  _regex: "$regex",
+  _exists: "$exists",
 };
 
 const toValue = (v: string): any => {
@@ -15,7 +21,7 @@ const toValue = (v: string): any => {
   return v;
 };
 
-const toArray = (v: string | string[]) =>  Array.isArray(v) ? v.map(toValue) : String(v).split(",").map(toValue);
+const toArray = (v: string | string[]) => (Array.isArray(v) ? v.map(toValue) : String(v).split(",").map(toValue));
 
 /*######################## pic valid values ####################################*/
 export const pic = <T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Partial<T> => {
@@ -29,7 +35,6 @@ export const pic = <T extends Record<string, any>, K extends keyof T>(obj: T, ke
 
 /*######################## Pagination helpers ####################################*/
 export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
-
   const {
     page = 1,
     limit = 10,
@@ -44,7 +49,7 @@ export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
     populate?: string;
   };
 
-  const parsedPage = Math.abs(Number(page)) || 1;  
+  const parsedPage = Math.abs(Number(page)) || 1;
   const parsedLimit = Math.min(Math.abs(Number(limit || 10)), 100);
   const skip = (parsedPage - 1) * parsedLimit;
 
@@ -62,12 +67,11 @@ export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
   };
 };
 
-
 /*######################## Filter Helper ####################################*/
 export const filterHelper = <T extends Record<string, unknown>>(
   reqQuery: T,
   partialSearching: string[],
-  schemaName: Document
+  schemaName: Document,
 ): Partial<TFilter> => {
   const schemaKeys = Object.keys(schemaName.schema.obj);
   const { search, ...rest } = pic(reqQuery, ["search", ...schemaKeys]);
@@ -84,10 +88,9 @@ export const filterHelper = <T extends Record<string, unknown>>(
     });
   }
 
-
   // Handle exact filters and operators (_gt, _lt, etc.)
   Object.entries(rest).forEach(([key, val]) => {
-    if (val === undefined || val === null || val === '') return;
+    if (val === undefined || val === null || val === "") return;
     const raw = val.toString().trim();
     const opKey = Object.keys(operatorsMap).find((sfx) => key.endsWith(sfx));
     const operator = opKey && operatorsMap[opKey];
@@ -95,7 +98,7 @@ export const filterHelper = <T extends Record<string, unknown>>(
 
     if (operator) {
       let val: any;
-    if (["$in", "$nin"].includes(operator)) {
+      if (["$in", "$nin"].includes(operator)) {
         val = toArray(raw);
       } else if (operator === "$exists") {
         val = raw === "true" || raw === "1";
@@ -115,7 +118,7 @@ export const filterHelper = <T extends Record<string, unknown>>(
       conditions.push({ [key]: val });
     }
   });
-  console.log(conditions)
+  console.log(conditions);
 
   return conditions.length > 0 ? { $and: conditions } : {};
 };

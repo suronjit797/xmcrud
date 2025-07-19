@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { TPayload } from "../Types/types";
+import { TPayload } from "../Types";
 
 // api error for send error with message and status
 export class ApiError extends Error {
