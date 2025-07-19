@@ -1,4 +1,5 @@
 import { RequestHandler } from "express";
+import type ioredisType from "ioredis";
 import { Model, SortOrder } from "mongoose";
 
 // response types
@@ -38,8 +39,9 @@ export type CrudMiddlewares = {
 };
 
 export type CrudOptions<T> = {
-  ModelName: Model<T>;
+  mongooseModel: Model<T>;
   name: string;
   basePath?: string;
   middlewares?: CrudMiddlewares;
+  ioredis?: ioredisType;
 };

@@ -2,8 +2,8 @@ import express, { Router } from "express";
 import generateCurdController from "./controller"; // path to your globalController
 import { CrudOptions } from "../Types/types";
 
-export const generateCrudRoutes = <T>({ ModelName, name, basePath = "", middlewares = {} }: CrudOptions<T>): Router => {
-  const controller = generateCurdController(ModelName, name);
+export const generateCrudRoutes = <T>({ mongooseModel, name, basePath = "", middlewares = {}, ioredis }: CrudOptions<T>): Router => {
+  const controller = generateCurdController(mongooseModel, name, ioredis);
   const router = express.Router();
 
   router.post(`${basePath}/`, ...(middlewares.create || []), controller.create);
