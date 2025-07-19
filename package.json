@@ -1,6 +1,6 @@
 {
   "name": "express-smart-helper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +17,6 @@
   "scripts": {
     "build": "tsc",
     "dev": "ts-node src/index.ts",
-    "prepublishOnly": "yarn build",
     "clean": "rm -rf dist",
     "prepare": "yarn build",
     "lint": "eslint . --ext .ts",
