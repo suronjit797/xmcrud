@@ -1,5 +1,5 @@
 {
-  "name": "expressjs-helper",
+  "name": "express-smart-helper",
   "version": "0.1.0",
   "description": "A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis support.",
   "main": "dist/index.js",
@@ -41,12 +41,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/suronjit797/expressjs-helper.git"
+    "url": "git+https://github.com/suronjit797/express-smart-helper.git"
   },
   "bugs": {
-    "url": "https://github.com/suronjit797/expressjs-helper/issues"
+    "url": "https://github.com/suronjit797/express-smart-helper/issues"
   },
-  "homepage": "https://github.com/suronjit797/expressjs-helper#readme",
+  "homepage": "https://github.com/suronjit797/express-smart-helper#readme",
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/ioredis": "^5.0.0",
