@@ -45,6 +45,8 @@ app.post("/users", userController.create);
 app.get("/users", userController.getAll);
 app.get("/users/:id", userController.getSingle);
 app.put("/users/:id", userController.update);
+// or
+app.patch("/users/:id", userController.update);
 app.delete("/users/:id", userController.remove);
 app.delete("/users", userController.removeMany);
 
@@ -80,6 +82,7 @@ POST: /api/users                => create user
 GET: /api/users                 => get all users
 GET: /api/users/:id             => get user by id
 PUT: /api/users/:id             => update user by id
+PATCH: /api/users/:id             => update user by id
 DELETE: /api/users/:id          => delete user by id
 
 */
@@ -89,7 +92,7 @@ app.listen(3000, () => {
 });
 ```
 
-### With Redis Caching (Optional)
+### 3. With Redis Caching (Optional)
 
 ```typescript
 import Redis from "ioredis";
@@ -106,7 +109,7 @@ const curdRouter = generateCrudRoutes({
 });
 ```
 
-### Helpers
+### 4. Helpers
 
 - **filterHelper**: Builds MongoDB filters from query parameters.
 - **paginationHelper**: Handles pagination and sorting from query parameters.
@@ -129,7 +132,7 @@ Pull requests and issues are welcome!
 
 ## License
 
-MIT © Suronjit Pal
+MIT © Suronjit Pal (suronjit797)
 
 ## Links
 

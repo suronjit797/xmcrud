@@ -1,6 +1,6 @@
 {
   "name": "express-easy-curd",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -39,7 +39,7 @@
     "express-easy-curd",
     "curd"
   ],
-  "author": "Suronjit Pal",
+  "author": "Suronjit Pal (suronjit797)",
   "license": "MIT",
   "repository": {
     "type": "git",
