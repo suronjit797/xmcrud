@@ -18,6 +18,7 @@ export const generateCrudRoutes = <T>({
 
   router.get(`${basePath}/:id`, ...(middlewares.getSingle || []), controller.getSingle);
   router.put(`${basePath}/:id`, ...(middlewares.update || []), controller.update);
+  router.patch(`${basePath}/:id`, ...(middlewares.update || []), controller.update);
   router.delete(`${basePath}/:id`, ...(middlewares.remove || []), controller.remove);
 
   return router;

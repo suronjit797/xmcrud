@@ -1,6 +1,6 @@
-# express-smart-helper
+# express easy CURD
 
-A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis (ioredis) support.
+A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis (ioredis) support. Make CURD operation easily
 
 ## Features
 
@@ -13,9 +13,9 @@ A lightweight helper library for building Express.js routes, controllers, and Re
 ## Installation
 
 ```bash
-npm install express-smart-helper
+npm install express-easy-curd
 # or
-yarn add express-smart-helper
+yarn add express-easy-curd
 ```
 
 > **Peer dependencies:**  
@@ -32,7 +32,7 @@ npm install express mongoose ioredis
 ```typescript
 import express from "express";
 import mongoose from "mongoose";
-import globalController from "express-smart-helper/dist/global/controller";
+import { globalController } from "express-easy-curd";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
@@ -58,7 +58,7 @@ app.listen(3000, () => {
 ```typescript
 import express from "express";
 import mongoose from "mongoose";
-import globalController from "express-smart-helper/dist/global/controller";
+import globalController from "express-easy-curd/dist/global/controller";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
@@ -118,7 +118,7 @@ const curdRouter = generateCrudRoutes({
 Type definitions are included. Import types from:
 
 ```typescript
-import { IMeta } from "express-smart-helper/dist/Types/types";
+import { IMeta } from "express-easy-curd/dist/Types/types";
 ```
 
 ## Contributing
@@ -133,5 +133,5 @@ MIT © Suronjit Pal
 
 ## Links
 
-- [GitHub Repository](https://github.com/suronjit797/express-smart-helper)
-- [Report Issues](https://github.com/suronjit797/express-smart-helper/issues)
+- [GitHub Repository](https://github.com/suronjit797/express-easy-curd)
+- [Report Issues](https://github.com/suronjit797/express-easy-curd/issues)

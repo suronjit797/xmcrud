@@ -1,3 +1,9 @@
+/**
+ * @license MIT
+ * Copyright (c) 2025 Suronjit Pal
+ */
+
+
 export { default as generateCurdController } from "./global/controller";
 export { generateCrudRoutes } from "./global/routes";
 export { sendResponse } from "./helpers/globalHelper";

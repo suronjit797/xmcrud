@@ -1,6 +1,6 @@
 {
-  "name": "express-smart-helper",
-  "version": "1.0.1",
+  "name": "express-easy-curd",
+  "version": "1.0.0",
   "description": "A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,7 +34,10 @@
     "express-router",
     "typescript",
     "rest",
-    "api"
+    "api",
+    "express-smart-helper",
+    "express-easy-curd",
+    "curd"
   ],
   "author": "Suronjit Pal",
   "license": "MIT",
