@@ -34,20 +34,20 @@ yarn add express mongoose ioredis express-easy-curd
 ```typescript
 import express from "express";
 import mongoose from "mongoose";
-import { globalController } from "express-easy-curd";
+import { generateCurdController } from "express-easy-curd";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
-const userController = globalController(UserModel, "User");
+const userController = generateCurdController(UserModel, "User");
 
 const app = express();
 app.use(express.json());
 
 app.get("/users", userController.getAll);
 app.post("/users", userController.create);
-app.PUT("/users", userController.create);
+app.put("/users", userController.create);
 /* or */
-app.PATCH("/users", userController.create);
+app.patch("/users", userController.create);
 app.delete("/users", userController.removeMany);
 
 app.get("/users/:id", userController.getSingle);
@@ -70,7 +70,7 @@ app.listen(3000, () => {
 ```typescript
 import express from "express";
 import mongoose from "mongoose";
-import globalController from "express-easy-curd/dist/global/controller";
+import { generateCrudRoutes } from "express-easy-curd";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
