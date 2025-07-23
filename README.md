@@ -45,11 +45,15 @@ app.use(express.json());
 
 app.get("/users", userController.getAll);
 app.post("/users", userController.create);
+app.PUT("/users", userController.create);
+/* or */
+app.PATCH("/users", userController.create);
 app.delete("/users", userController.removeMany);
 
 app.get("/users/:id", userController.getSingle);
 app.put("/users/:id", userController.update);
-/* or */ app.patch("/users/:id", userController.update);
+/* or */
+app.patch("/users/:id", userController.update);
 app.delete("/users/:id", userController.remove);
 
 app.listen(3000, () => {
@@ -83,14 +87,17 @@ app.use("/api", curdRouter);
 
 /* 
 Same result as no 1. It will generate                
-GET: /api/users                 => get all users
-POST: /api/users                => create user
-DELETE: /api/users              => delete many users together
+GET: /api/users                             => get all users
+POST: /api/users                            => create user
+PUT: /api/users?name=suronjit797            => update many users together by filter (query params)
+PATCH: /api/users?name=suronjit797          => update many users together by filter (query params)
+DELETE: /api/users?name=suronjit797         => delete many users together by filter (query params)
 
-GET: /api/users/:id             => get user by id
-PUT: /api/users/:id             => update user by id
-PATCH: /api/users/:id           => update user by id
-DELETE: /api/users/:id          => delete user by id
+//dynamic routes
+GET: /api/users/:id                         => get user by id
+PUT: /api/users/:id                         => update user by id
+PATCH: /api/users/:id                       => update user by id
+DELETE: /api/users/:id                      => delete user by id
 
 */
 
