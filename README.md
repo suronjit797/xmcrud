@@ -22,7 +22,9 @@ yarn add express-easy-curd
 > You must install compatible versions of `express`, `mongoose`, and `ioredis` (optional) in your project.
 
 ```bash
-npm install express mongoose ioredis
+npm install express mongoose ioredis express-easy-curd
+# or
+yarn add express mongoose ioredis express-easy-curd
 ```
 
 ## Usage
@@ -36,24 +38,28 @@ import { globalController } from "express-easy-curd";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
-const userController = globalController(UserModel, "user");
+const userController = globalController(UserModel, "User");
 
 const app = express();
 app.use(express.json());
 
-app.post("/users", userController.create);
 app.get("/users", userController.getAll);
+app.post("/users", userController.create);
+app.delete("/users", userController.removeMany);
+
 app.get("/users/:id", userController.getSingle);
 app.put("/users/:id", userController.update);
-// or
-app.patch("/users/:id", userController.update);
+/* or */ app.patch("/users/:id", userController.update);
 app.delete("/users/:id", userController.remove);
-app.delete("/users", userController.removeMany);
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
 ```
+
+## ⚠️ Warning
+
+> **Use proper validation for `removeMany` and `updateMany` routes** to avoid unintended data loss or modification.
 
 ### 2. Basic Router Example
 
@@ -77,12 +83,13 @@ app.use("/api", curdRouter);
 
 /* 
 Same result as no 1. It will generate                
-POST: /api/users/delete-many    => delete many users together
-POST: /api/users                => create user
 GET: /api/users                 => get all users
+POST: /api/users                => create user
+DELETE: /api/users              => delete many users together
+
 GET: /api/users/:id             => get user by id
 PUT: /api/users/:id             => update user by id
-PATCH: /api/users/:id             => update user by id
+PATCH: /api/users/:id           => update user by id
 DELETE: /api/users/:id          => delete user by id
 
 */

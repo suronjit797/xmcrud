@@ -8,6 +8,14 @@ import { filterHelper, paginationHelper } from "../helpers/queryHelper";
 
 const { ObjectId } = Types;
 
+const delIoredisCache = async (ioredis: ioredisType, name: string): Promise<void> => {
+  if (ioredis && name) {
+    const cacheKey = `*api:v1:${name}*`.toLowerCase();
+    const keys = await ioredis.keys(cacheKey);
+    if (keys.length > 0) await ioredis.call("DEL", ...keys);
+  }
+};
+
 const globalController = <TType>(
   ModelName: Model<TType>,
   name: string,
@@ -17,6 +25,7 @@ const globalController = <TType>(
   getAll: RequestHandler;
   getSingle: RequestHandler;
   update: RequestHandler;
+  updateMany: RequestHandler;
   remove: RequestHandler;
   removeMany: RequestHandler;
 } => {
@@ -24,11 +33,7 @@ const globalController = <TType>(
     // create
     create: async (req, res, next) => {
       try {
-        if (ioredis) {
-          const cacheKey = `*api:v1:${name}*`.toLowerCase();
-          const keys = await ioredis.keys(cacheKey);
-          if (keys.length > 0) await ioredis.call("DEL", ...keys);
-        }
+        if (ioredis) delIoredisCache(ioredis, name);
 
         const data = await ModelName.create(req.body);
         sendResponse(res, 201, {
@@ -66,11 +71,12 @@ const globalController = <TType>(
           const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
 
           const { page, limit, skip, sortCondition, populate } = pagination;
-          const data = await ModelName.find(filter)
+          const data = (await ModelName.find(filter)
             .limit(limit)
             .skip(skip)
             .sort(sortCondition)
-            .populate(populate || "");
+            .populate(populate || "")
+            .lean()) as TType[];
 
           const total = await ModelName.countDocuments(filter);
           values = { data, meta: { page, limit, total } };
@@ -105,7 +111,9 @@ const globalController = <TType>(
         }
 
         if (!data) {
-          data = await ModelName.findById(req.params.id);
+          if (!ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
+
+          data = (await ModelName.findById(req.params.id).lean()) as TType | null;
           if (ioredis && data) {
             await ioredis.set(cacheKey, JSON.stringify(data), "EX", 600);
           }
@@ -124,11 +132,8 @@ const globalController = <TType>(
     // update
     update: async (req, res, next) => {
       try {
-        if (ioredis) {
-          const cacheKey = `*api:v1:${name}*`.toLowerCase();
-          const keys = await ioredis.keys(cacheKey);
-          if (keys.length > 0) await ioredis.call("DEL", ...keys);
-        }
+        if (ioredis) delIoredisCache(ioredis, name);
+        if (!ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
 
         const data = await ModelName.findByIdAndUpdate(req.params.id, req.body, {
           new: true,
@@ -149,14 +154,35 @@ const globalController = <TType>(
       }
     },
 
+    // update
+    updateMany: async (req, res, next) => {
+      try {
+        if (ioredis) delIoredisCache(ioredis, name);
+
+        const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
+
+        const result = await ModelName.updateMany(filter, req.body, { new: true, runValidators: true });
+
+        if (result.modifiedCount === 0) {
+          throw new ApiError(404, "No documents updated");
+        }
+        const data = await ModelName.find(filter);
+
+        sendResponse(res, 200, {
+          success: true,
+          message: `${name}s updated successfully`,
+          data,
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+
     // remove
     remove: async (req, res, next) => {
       try {
-        if (ioredis) {
-          const cacheKey = `*api:v1:${name}*`.toLowerCase();
-          const keys = await ioredis.keys(cacheKey);
-          if (keys.length > 0) await ioredis.call("DEL", ...keys);
-        }
+        if (ioredis) delIoredisCache(ioredis, name);
+        if (!ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
 
         const data = await ModelName.findByIdAndDelete(req.params.id);
 
@@ -173,16 +199,9 @@ const globalController = <TType>(
     // removeMany
     removeMany: async (req, res, next) => {
       try {
-        if (ioredis) {
-          const cacheKey = `*api:v1:${name}*`.toLowerCase();
-          const keys = await ioredis.keys(cacheKey);
-          if (keys.length > 0) await ioredis.call("DEL", ...keys);
-        }
+        if (ioredis) delIoredisCache(ioredis, name);
 
-        const ids = req.body.ids;
-        if (!ids || !ids.length) throw new ApiError(400, "No ids provided");
-
-        const filter = { _id: { $in: ids.map((id: string) => new ObjectId(id)) } };
+        const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
         const data = await ModelName.deleteMany(filter);
 
         sendResponse(res, 200, {
