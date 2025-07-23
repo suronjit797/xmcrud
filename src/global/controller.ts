@@ -33,7 +33,7 @@ const globalController = <TType>(
     // create
     create: async (req, res, next) => {
       try {
-        if (ioredis) delIoredisCache(ioredis, name);
+        if (ioredis) await delIoredisCache(ioredis, name);
 
         const data = await ModelName.create(req.body);
         sendResponse(res, 201, {
@@ -132,7 +132,7 @@ const globalController = <TType>(
     // update
     update: async (req, res, next) => {
       try {
-        if (ioredis) delIoredisCache(ioredis, name);
+        if (ioredis) await delIoredisCache(ioredis, name);
         if (!ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
 
         const data = await ModelName.findByIdAndUpdate(req.params.id, req.body, {
@@ -157,11 +157,11 @@ const globalController = <TType>(
     // update
     updateMany: async (req, res, next) => {
       try {
-        if (ioredis) delIoredisCache(ioredis, name);
+        if (ioredis) await delIoredisCache(ioredis, name);
 
         const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
 
-        const result = await ModelName.updateMany(filter, req.body, { new: true, runValidators: true });
+        const result = await ModelName.updateMany(filter, req.body, { runValidators: true });
 
         if (result.modifiedCount === 0) {
           throw new ApiError(404, "No documents updated");
@@ -181,7 +181,7 @@ const globalController = <TType>(
     // remove
     remove: async (req, res, next) => {
       try {
-        if (ioredis) delIoredisCache(ioredis, name);
+        if (ioredis) await delIoredisCache(ioredis, name);
         if (!ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
 
         const data = await ModelName.findByIdAndDelete(req.params.id);
@@ -199,7 +199,7 @@ const globalController = <TType>(
     // removeMany
     removeMany: async (req, res, next) => {
       try {
-        if (ioredis) delIoredisCache(ioredis, name);
+        if (ioredis) await delIoredisCache(ioredis, name);
 
         const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
         const data = await ModelName.deleteMany(filter);

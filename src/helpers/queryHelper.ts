@@ -118,7 +118,6 @@ export const filterHelper = <T extends Record<string, unknown>>(
       conditions.push({ [key]: val });
     }
   });
-  console.log(conditions);
 
   return conditions.length > 0 ? { $and: conditions } : {};
 };

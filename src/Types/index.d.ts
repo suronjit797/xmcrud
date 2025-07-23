@@ -43,6 +43,7 @@ export type CrudMiddlewares = {
   getAll?: RequestHandler[];
   getSingle?: RequestHandler[];
   update?: RequestHandler[];
+  updateMany?: RequestHandler[];
   remove?: RequestHandler[];
   removeMany?: RequestHandler[];
 };

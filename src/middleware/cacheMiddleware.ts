@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import redisGenerateCacheKey from "../helpers/redisCacheKeyGenerator";
-import Redis from "ioredis";
+import ioredis from "ioredis";
 import { sendResponse } from "../helpers/globalHelper";
 
-const cacheMiddleware = (redis:Redis) => async (req: Request, res: Response, next: NextFunction) => {
+const cacheMiddleware = (redis:ioredis) => async (req: Request, res: Response, next: NextFunction) => {
   try {
     const method = req.method.toUpperCase();
     const baseUrl = req.baseUrl.toLowerCase(); // e.g., /api/v1/user
