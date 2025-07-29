@@ -24,13 +24,21 @@ const toValue = (v: string): any => {
 const toArray = (v: string | string[]) => (Array.isArray(v) ? v.map(toValue) : String(v).split(",").map(toValue));
 
 /*######################## pic valid values ####################################*/
-export const pic = <T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Partial<T> => {
-  return keys.reduce((acc, key) => {
+export const pic = <T extends Record<string, any>>(obj: T, schemaFields: string[]): Record<string, any> => {
+  const validKeys = Object.keys(obj).filter((key) => {
+    // Direct key match
+    if (schemaFields.includes(key)) return true;
+
+    // Operator match (e.g., amount_gt → amount)
+    return schemaFields.some((field) => Object.keys(operatorsMap).some((op) => key === `${field}${op}`));
+  });
+
+  return validKeys.reduce((acc: Record<string, any>, key) => {
     if (Object.prototype.hasOwnProperty.call(obj, key) && obj[key] !== undefined) {
       acc[key] = obj[key];
     }
     return acc;
-  }, {} as Partial<T>);
+  }, {});
 };
 
 /*######################## Pagination helpers ####################################*/
