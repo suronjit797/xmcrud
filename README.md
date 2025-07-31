@@ -77,7 +77,17 @@ const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 const curdRouter = generateCrudRoutes({
   mongooseModel: UserModel,
   name: "User",
-  basePath: "/users", //optional
+  //optional parameters
+  basePath: "/users",
+  middlewares: {
+    getAll: [...middlewares],
+    create: [...middlewares],
+    removeMany: [...middlewares],
+    updateMany: [...middlewares],
+    getSingle: [...middlewares],
+    update: [...middlewares],
+    remove: [...middlewares],
+  },
 });
 
 const app = express();
