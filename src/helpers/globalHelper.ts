@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { RequestHandler, Response } from "express";
 import { TPayload } from "../Types";
 
 // api error for send error with message and status
@@ -27,3 +27,10 @@ export const sendResponse = <T>(res: Response, status: number, payload: TPayload
 
   return res.status(status).json(response);
 };
+
+export const partialFilterMiddlewares =
+  (keys: string[]): RequestHandler =>
+  (req, res, next) => {
+    req.partialFilter = keys;
+    next();
+  };

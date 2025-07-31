@@ -2,6 +2,13 @@
 
 A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis (ioredis) support. Make CURD operation easily
 
+## Table of Content
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Helpers](#helpers)
+- [Query](#query)
+
 ## Features
 
 - Generic CRUD controller for Mongoose models
@@ -72,7 +79,7 @@ import express from "express";
 import mongoose from "mongoose";
 import { generateCrudRoutes } from "express-easy-curd";
 
-const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
+const UserModel = mongoose.model("User", new mongoose.Schema({ name: String, age: Number }));
 
 const curdRouter = generateCrudRoutes({
   mongooseModel: UserModel,
@@ -133,12 +140,53 @@ const curdRouter = generateCrudRoutes({
 });
 ```
 
-### 4. Helpers
+## Helpers
 
 - **filterHelper**: Builds MongoDB filters from query parameters.
 - **paginationHelper**: Handles pagination and sorting from query parameters.
 - **sendResponse**: Standardizes API responses.
 - **ApiError**: Custom error class for API errors.
+- **partialFilterMiddlewares**: for set partial keys.
+
+```typescript
+// pagination
+const pagination = paginationHelper(req.query);
+
+// filters for getAll/updateMany/deleteMany
+const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
+
+// partialFilterMiddlewares as a middleware and set all fields that type is String in schema
+const UserRouter = generateCrudRoutes({
+  mongooseModel: UserModel,
+  name: "User",
+  middlewares: {
+    getAll: [partialFilterMiddlewares(["name"...])],
+  },
+});
+
+// partial search items
+```
+
+## Query
+
+### 5. getAll, deleteMany, updateMany quires
+
+you can use mongoose operators through api url query
+
+```typescript
+  {_gt: "$gt",
+  _lt: "$lt",
+  _gte: "$gte",
+  _lte: "$lte",
+  _ne: "$ne",
+  _in: "$in",
+  _nin: "$nin",
+  _regex: "$regex",
+  _exists: "$exists",}
+
+```
+
+such as: localhost:3000/users?age_gt=10&name=suronjit797&search=item //all other items
 
 ## TypeScript
 
