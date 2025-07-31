@@ -17,10 +17,10 @@ const operatorsMap: Record<string, string> = {
 const toValue = (v: string): any => {
   if (v === "true") return true;
   if (v === "false") return false;
+  if (v === "null") return null;
   if (!isNaN(+v) && v.trim() !== "") return +v;
   return v;
 };
-
 const toArray = (v: string | string[]) => (Array.isArray(v) ? v.map(toValue) : String(v).split(",").map(toValue));
 
 /*######################## pic valid values ####################################*/

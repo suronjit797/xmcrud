@@ -45,9 +45,9 @@ app.use(express.json());
 
 app.get("/users", userController.getAll);
 app.post("/users", userController.create);
-app.put("/users", userController.create);
+app.put("/users", userController.updateMany);
 /* or */
-app.patch("/users", userController.create);
+app.patch("/users", userController.updateMany);
 app.delete("/users", userController.removeMany);
 
 app.get("/users/:id", userController.getSingle);
