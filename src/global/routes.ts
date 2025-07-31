@@ -15,8 +15,8 @@ export const generateCrudRoutes = <T>({
   router.get(`${basePath}/`, ...(middlewares.getAll || []), controller.getAll);
   router.post(`${basePath}/`, ...(middlewares.create || []), controller.create);
   router.put(`${basePath}/`, ...(middlewares.updateMany || []), controller.updateMany);
-  router.patch(`${basePath}/`, ...(middlewares.updateMany || []), controller.updateMany);
-  router.delete(`${basePath}/`, ...(middlewares.removeMany || []), controller.removeMany);
+  router.patch(`${basePath}/delete-many`, ...(middlewares.updateMany || []), controller.updateMany);
+  router.delete(`${basePath}/update-many`, ...(middlewares.removeMany || []), controller.removeMany);
 
   router.get(`${basePath}/:id`, ...(middlewares.getSingle || []), controller.getSingle);
   router.put(`${basePath}/:id`, ...(middlewares.update || []), controller.update);

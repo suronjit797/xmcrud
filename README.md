@@ -54,8 +54,8 @@ app.get("/users", userController.getAll);
 app.post("/users", userController.create);
 app.put("/users", userController.updateMany);
 /* or */
-app.patch("/users", userController.updateMany);
-app.delete("/users", userController.removeMany);
+app.patch("/users/update-many", userController.updateMany);
+app.delete("/users/delete-many", userController.removeMany);
 
 app.get("/users/:id", userController.getSingle);
 app.put("/users/:id", userController.update);
@@ -104,17 +104,17 @@ app.use("/api", curdRouter);
 
 /* 
 Same result as no 1. It will generate                
-GET: /api/users                             => get all users
-POST: /api/users                            => create user
-PUT: /api/users?name=suronjit797            => update many users together by filter (query params)
-PATCH: /api/users?name=suronjit797          => update many users together by filter (query params)
-DELETE: /api/users?name=suronjit797         => delete many users together by filter (query params)
+GET: /api/users                                   => get all users
+POST: /api/users                                  => create user
+PUT: /api/users?name=suronjit797                  => update many users together by filter (query params)
+PATCH: /api/users/update-many?name=suronjit797    => update many users together by filter (query params)
+DELETE: /api/users/delete-many?name=suronjit797   => delete many users together by filter (query params)
 
 //dynamic routes
-GET: /api/users/:id                         => get user by id
-PUT: /api/users/:id                         => update user by id
-PATCH: /api/users/:id                       => update user by id
-DELETE: /api/users/:id                      => delete user by id
+GET: /api/users/:id                               => get user by id
+PUT: /api/users/:id                               => update user by id
+PATCH: /api/users/:id                             => update user by id
+DELETE: /api/users/:id                            => delete user by id
 
 */
 
