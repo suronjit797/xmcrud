@@ -129,7 +129,7 @@ app.listen(3000, () => {
 import Redis from "ioredis";
 const ioredis = new Redis();
 
-const userController = globalController(UserModel, "user", ioredis);
+const userController = globalController(UserModel, "user", ioredis, 600);
 
 //or
 const curdRouter = generateCrudRoutes({
@@ -137,6 +137,7 @@ const curdRouter = generateCrudRoutes({
   name: "User",
   basePath: "/users"  //optional
   ioredis: ioredis    //optional
+  cachedTime: 600     // optional (in secondes) default 600 = 10 minutes (if there ioredis)
 });
 ```
 
@@ -174,7 +175,7 @@ const UserRouter = generateCrudRoutes({
 you can use mongoose operators through api url query
 
 ```typescript
-  {_gt: "$gt",
+  _gt: "$gt",
   _lt: "$lt",
   _gte: "$gte",
   _lte: "$lte",
@@ -182,7 +183,7 @@ you can use mongoose operators through api url query
   _in: "$in",
   _nin: "$nin",
   _regex: "$regex",
-  _exists: "$exists",}
+  _exists: "$exists",
 
 ```
 

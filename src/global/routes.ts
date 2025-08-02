@@ -1,6 +1,17 @@
-import express, { Router } from "express";
+import express, { RequestHandler, Router } from "express";
 import generateCurdController from "./controller"; // path to your globalController
-import { CrudOptions } from "../Types";
+import { Model } from "mongoose";
+import type ioredisType from "ioredis";
+
+type CrudMiddlewares = {
+  create?: RequestHandler[];
+  getAll?: RequestHandler[];
+  getSingle?: RequestHandler[];
+  update?: RequestHandler[];
+  updateMany?: RequestHandler[];
+  remove?: RequestHandler[];
+  removeMany?: RequestHandler[];
+};
 
 export const generateCrudRoutes = <T>({
   mongooseModel,
@@ -8,8 +19,16 @@ export const generateCrudRoutes = <T>({
   basePath = "",
   middlewares = {},
   ioredis,
-}: CrudOptions<T>): Router => {
-  const controller = generateCurdController(mongooseModel, name, ioredis);
+  cachedTime,
+}: {
+  mongooseModel: Model<T>;
+  name: string;
+  basePath?: string;
+  middlewares?: CrudMiddlewares;
+  ioredis?: ioredisType;
+  cachedTime?: number;
+}): Router => {
+  const controller = generateCurdController(mongooseModel, name, ioredis, cachedTime);
   const router = express.Router();
 
   router.get(`${basePath}/`, ...(middlewares.getAll || []), controller.getAll);

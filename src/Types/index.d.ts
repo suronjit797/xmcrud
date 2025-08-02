@@ -38,20 +38,12 @@ export type IPagination = {
 
 export type TFilter = { [key: string]: object };
 
-export type CrudMiddlewares = {
-  create?: RequestHandler[];
-  getAll?: RequestHandler[];
-  getSingle?: RequestHandler[];
-  update?: RequestHandler[];
-  updateMany?: RequestHandler[];
-  remove?: RequestHandler[];
-  removeMany?: RequestHandler[];
-};
-
-export type CrudOptions<T> = {
-  mongooseModel: Model<T>;
-  name: string;
-  basePath?: string;
-  middlewares?: CrudMiddlewares;
-  ioredis?: ioredisType;
-};
+// export type CrudMiddlewares = {
+//   create?: RequestHandler[];
+//   getAll?: RequestHandler[];
+//   getSingle?: RequestHandler[];
+//   update?: RequestHandler[];
+//   updateMany?: RequestHandler[];
+//   remove?: RequestHandler[];
+//   removeMany?: RequestHandler[];
+// };

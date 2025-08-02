@@ -20,6 +20,7 @@ const globalController = <TType>(
   ModelName: Model<TType>,
   name: string,
   ioredis?: ioredisType,
+  cachedTime: number = 600, // in seconds
 ): {
   create: RequestHandler;
   getAll: RequestHandler;
@@ -82,7 +83,7 @@ const globalController = <TType>(
           values = { data, meta: { page, limit, total } };
 
           if (ioredis && values.data.length) {
-            await ioredis.set(cacheKey, JSON.stringify(values), "EX", 600);
+            await ioredis.set(cacheKey, JSON.stringify(values), "EX", cachedTime);
           }
         }
 
@@ -115,7 +116,7 @@ const globalController = <TType>(
 
           data = (await ModelName.findById(req.params.id).lean()) as TType | null;
           if (ioredis && data) {
-            await ioredis.set(cacheKey, JSON.stringify(data), "EX", 600);
+            await ioredis.set(cacheKey, JSON.stringify(data), "EX", cachedTime);
           }
         }
 
