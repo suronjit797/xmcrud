@@ -135,9 +135,9 @@ const userController = globalController(UserModel, "user", ioredis, 600);
 const curdRouter = generateCrudRoutes({
   mongooseModel: UserModel,
   name: "User",
-  basePath: "/users"  //optional
-  ioredis: ioredis    //optional
-  cachedTime: 600     // optional (in secondes) default 600 = 10 minutes (if there ioredis)
+  basePath: "/users",  //optional
+  ioredis: ioredis,    //optional
+  cachedTime: 600 ,    // optional (in secondes) default 600 = 10 minutes (if there ioredis)
 });
 ```
 
