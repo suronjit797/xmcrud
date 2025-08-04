@@ -58,16 +58,13 @@ const globalController = <TType>(
         const cacheKey = redisGenerateCacheKey(req);
 
         if (ioredis) {
-          console.log("redis hit");
           const cachedData = await ioredis.get(cacheKey);
           if (cachedData) {
-            console.log("cached hit");
             values = JSON.parse(cachedData);
           }
         }
 
         if (!values.data.length) {
-          console.log("cache mis");
           const pagination = paginationHelper(req.query);
           const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
 

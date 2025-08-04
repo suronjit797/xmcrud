@@ -1,57 +1,77 @@
-# express easy CURD
 
-A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis (ioredis) support. Make CURD operation easily
 
-## Table of Content
+# 🚀 express-easy-crud
+
+A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware. Simplify your CRUD operations with flexible APIs, built-in helpers, and optional caching.
+
+> ⚡ Build scalable REST APIs in minutes with Express and Mongoose.
+
+---
+
+## 📚 Table of Contents
 
 - [Installation](#installation)
 - [Tutorials](#tutorials)
+- [Features](#features)
 - [Usage](#usage)
+  - [Controller Example](#1-controller-example)
+  - [Router Example](#2-router-example)
+  - [Redis Caching](#3-with-redis-caching-optional)
 - [Helpers](#helpers)
-- [Query](#query)
+- [Query Operators](#query-operators)
+- [TypeScript Support](#typescript-support)
+- [Contributing](#contributing)
+- [License](#license)
+- [Links](#links)
 
-## Tutorials
+---
+
+## 🎥 Tutorials
 
 [![Watch the tutorial](https://img.youtube.com/vi/oPjdKeG4ppE/0.jpg)](https://www.youtube.com/watch?v=oPjdKeG4ppE)
 
+---
 
-## Features
+## ✨ Features
 
-- Generic CRUD controller for Mongoose models
-- Express.js route and controller helpers
-- Optional Redis caching for improved performance
-- TypeScript support with included types
-- Query filtering and pagination helpers
+- ✅ Generic CRUD controller for Mongoose models
+- ✅ Auto-generated Express routes
+- ✅ Optional Redis caching via `ioredis`
+- ✅ Query filtering and pagination helpers
+- ✅ TypeScript support with included types
+- ✅ Partial search and dynamic filtering
 
-## Installation
+---
+
+## 📦 Installation
 
 ```bash
-npm install express-easy-curd
+npm install express-easy-crud
 # or
-yarn add express-easy-curd
+yarn add express-easy-crud
 ```
 
 > **Peer dependencies:**  
-> You must install compatible versions of `express`, `mongoose`, and `ioredis` (optional) in your project.
+> You must install compatible versions of `express`, `mongoose`, and optionally `ioredis`.
 
 ```bash
-npm install express mongoose ioredis express-easy-curd
-# or
-yarn add express mongoose ioredis express-easy-curd
+npm install express mongoose ioredis
 ```
 
-## Usage
+---
 
-### 1. Basic Controller Example
+## 🚀 Usage
 
-```typescript
+### 1. Controller Example
+
+```ts
 import express from "express";
 import mongoose from "mongoose";
-import { generateCurdController } from "express-easy-curd";
+import { generateCrudController } from "express-easy-crud";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
-const userController = generateCurdController(UserModel, "User");
+const userController = generateCrudController(UserModel, "User");
 
 const app = express();
 app.use(express.json());
@@ -59,13 +79,11 @@ app.use(express.json());
 app.get("/users", userController.getAll);
 app.post("/users", userController.create);
 app.put("/users", userController.updateMany);
-/* or */
 app.patch("/users/update-many", userController.updateMany);
 app.delete("/users/delete-many", userController.removeMany);
 
 app.get("/users/:id", userController.getSingle);
 app.put("/users/:id", userController.update);
-/* or */
 app.patch("/users/:id", userController.update);
 app.delete("/users/:id", userController.remove);
 
@@ -74,23 +92,22 @@ app.listen(3000, () => {
 });
 ```
 
-## ⚠️ Warning
+> ⚠️ **Warning:** Use proper validation for `removeMany` and `updateMany` to avoid unintended data loss.
 
-> **Use proper validation for `removeMany` and `updateMany` routes** to avoid unintended data loss or modification.
+---
 
-### 2. Basic Router Example
+### 2. Router Example
 
-```typescript
+```ts
 import express from "express";
 import mongoose from "mongoose";
-import { generateCrudRoutes } from "express-easy-curd";
+import { generateCrudRoutes } from "express-easy-crud";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String, age: Number }));
 
-const curdRouter = generateCrudRoutes({
+const crudRouter = generateCrudRoutes({
   mongooseModel: UserModel,
   name: "User",
-  //optional parameters
   basePath: "/users",
   middlewares: {
     getAll: [...middlewares],
@@ -105,115 +122,119 @@ const curdRouter = generateCrudRoutes({
 
 const app = express();
 app.use(express.json());
-
-app.use("/api", curdRouter);
-
-/* 
-Same result as no 1. It will generate                
-GET: /api/users                                   => get all users
-POST: /api/users                                  => create user
-PUT: /api/users?name=suronjit797                  => update many users together by filter (query params)
-PATCH: /api/users/update-many?name=suronjit797    => update many users together by filter (query params)
-DELETE: /api/users/delete-many?name=suronjit797   => delete many users together by filter (query params)
-
-//dynamic routes
-GET: /api/users/:id                               => get user by id
-PUT: /api/users/:id                               => update user by id
-PATCH: /api/users/:id                             => update user by id
-DELETE: /api/users/:id                            => delete user by id
-
-*/
-
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
-});
+app.use("/api", crudRouter);
 ```
+
+**Generated Routes:**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET    | `/api/users` | Get all users |
+| POST   | `/api/users` | Create user |
+| PUT    | `/api/users?name=suronjit797` | Update many users |
+| PATCH  | `/api/users/update-many?name=suronjit797` | Update many users |
+| DELETE | `/api/users/delete-many?name=suronjit797` | Delete many users |
+| GET    | `/api/users/:id` | Get user by ID |
+| PUT    | `/api/users/:id` | Update user by ID |
+| PATCH  | `/api/users/:id` | Update user by ID |
+| DELETE | `/api/users/:id` | Delete user by ID |
+
+---
 
 ### 3. With Redis Caching (Optional)
 
-```typescript
+```ts
 import Redis from "ioredis";
-const ioredis = new Redis();
+const redisClient = new Redis();
 
-const userController = globalController(UserModel, "user", ioredis, 600);
+const userController = generateCrudController(UserModel, "User", redisClient, 600);
 
-//or
-const curdRouter = generateCrudRoutes({
+const crudRouter = generateCrudRoutes({
   mongooseModel: UserModel,
   name: "User",
-  basePath: "/users",  //optional
-  ioredis: ioredis,    //optional
-  cachedTime: 600 ,    // optional (in secondes) default 600 = 10 minutes (if there ioredis)
+  basePath: "/users",
+  ioredis: redisClient,
+  cachedTime: 600, // in seconds (default: 600 = 10 minutes)
 });
 ```
 
-## Helpers
+---
 
-- **filterHelper**: Builds MongoDB filters from query parameters.
-- **paginationHelper**: Handles pagination and sorting from query parameters.
-- **sendResponse**: Standardizes API responses.
-- **ApiError**: Custom error class for API errors.
-- **partialFilterMiddlewares**: for set partial keys.
+## 🧰 Helpers
 
-```typescript
-// pagination
+- `filterHelper(req.query, partialKeys, model)` – Builds MongoDB filters from query params
+- `paginationHelper(req.query)` – Handles pagination and sorting
+- `sendResponse(res, data)` – Standardizes API responses
+- `ApiError` – Custom error class
+- `partialFilterMiddlewares(keys)` – Enables partial search on string fields
+
+```ts
 const pagination = paginationHelper(req.query);
+const filter = filterHelper(req.query, req.partialFilter || [], new UserModel());
 
-// filters for getAll/updateMany/deleteMany
-const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
-
-// partialFilterMiddlewares as a middleware and set all fields that type is String in schema
 const UserRouter = generateCrudRoutes({
   mongooseModel: UserModel,
   name: "User",
   middlewares: {
-    getAll: [partialFilterMiddlewares(["name"...])],
+    getAll: [partialFilterMiddlewares(["name", "email"])],
   },
 });
-
-// partial search items
 ```
 
-## Query
+---
 
-### 5. getAll, deleteMany, updateMany quires
+## 🔍 Query Operators
 
-you can use mongoose operators through api url query
+Use Mongoose-style operators in query strings:
 
-```typescript
-  _gt: "$gt",
-  _lt: "$lt",
-  _gte: "$gte",
-  _lte: "$lte",
-  _ne: "$ne",
-  _in: "$in",
-  _nin: "$nin",
-  _regex: "$regex",
-  _exists: "$exists",
+| Operator | Query Param |
+|----------|-------------|
+| `$gt`    | `_gt`       |
+| `$lt`    | `_lt`       |
+| `$gte`   | `_gte`      |
+| `$lte`   | `_lte`      |
+| `$ne`    | `_ne`       |
+| `$in`    | `_in`       |
+| `$nin`   | `_nin`      |
+| `$regex` | `_regex`    |
+| `$exists`| `_exists`   |
+
+Example:
 
 ```
-
-such as: localhost:3000/users?age_gt=10&name=suronjit797&search=item //all other items
-
-## TypeScript
-
-Type definitions are included. Import types from:
-
-```typescript
-import { IMeta } from "express-easy-curd/dist/Types/types";
+GET /users?age_gt=10&name=suronjit797&search=item
 ```
 
-## Contributing
+---
+
+## 🧑‍💻 TypeScript Support
+
+Type definitions are included:
+
+```ts
+import { IMeta } from "express-easy-crud/dist/Types/types";
+```
+
+---
+
+## 🤝 Contributing
 
 Pull requests and issues are welcome!
 
 <!-- See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. -->
 
-## License
+---
 
-MIT © Suronjit Pal (suronjit797)
+## 📜 License
 
-## Links
+MIT © Suronjit Pal ([@suronjit797](https://github.com/suronjit797))
+
+---
+
+## 🔗 Links
 
 - [GitHub Repository](https://github.com/suronjit797/express-easy-curd)
 - [Report Issues](https://github.com/suronjit797/express-easy-curd/issues)
+- [YouTube Tutorial](https://www.youtube.com/watch?v=oPjdKeG4ppE)
+
+```

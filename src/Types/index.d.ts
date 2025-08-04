@@ -38,7 +38,7 @@ export type IPagination = {
 
 export type TFilter = { [key: string]: object };
 
-// export type CrudMiddlewares = {
+// export type CurdMiddlewares = {
 //   create?: RequestHandler[];
 //   getAll?: RequestHandler[];
 //   getSingle?: RequestHandler[];

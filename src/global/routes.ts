@@ -3,7 +3,7 @@ import generateCurdController from "./controller"; // path to your globalControl
 import { Model } from "mongoose";
 import type ioredisType from "ioredis";
 
-type CrudMiddlewares = {
+type CurdMiddlewares = {
   create?: RequestHandler[];
   getAll?: RequestHandler[];
   getSingle?: RequestHandler[];
@@ -13,7 +13,7 @@ type CrudMiddlewares = {
   removeMany?: RequestHandler[];
 };
 
-export const generateCrudRoutes = <T>({
+export const generateCurdRoutes = <T>({
   mongooseModel,
   name,
   basePath = "",
@@ -24,7 +24,7 @@ export const generateCrudRoutes = <T>({
   mongooseModel: Model<T>;
   name: string;
   basePath?: string;
-  middlewares?: CrudMiddlewares;
+  middlewares?: CurdMiddlewares;
   ioredis?: ioredisType;
   cachedTime?: number;
 }): Router => {
