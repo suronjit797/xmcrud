@@ -5,9 +5,15 @@ A lightweight helper library for building Express.js routes, controllers, and Re
 ## Table of Content
 
 - [Installation](#installation)
+- [Tutorials](#tutorials)
 - [Usage](#usage)
 - [Helpers](#helpers)
 - [Query](#query)
+
+## Tutorials
+
+[![Watch the tutorial](https://img.youtube.com/vi/oPjdKeG4ppE/0.jpg)](https://www.youtube.com/watch?v=oPjdKeG4ppE)
+
 
 ## Features
 
