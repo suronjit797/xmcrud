@@ -33,7 +33,7 @@ export type IPagination = {
   limit: number;
   skip: number;
   sortCondition: ISortCondition;
-  populate?: string;
+  populate?: string | Record<string>;
 };
 
 export type TFilter = { [key: string]: object };

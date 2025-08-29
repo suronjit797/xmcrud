@@ -1,4 +1,4 @@
-import { Document, SortOrder } from "mongoose";
+import { Document, SortOrder, Types } from "mongoose";
 import { IPagination, ISortCondition, TFilter } from "../Types";
 
 // Supported operators for query
@@ -66,12 +66,39 @@ export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
 
   const sortCondition: ISortCondition = { [sortBy]: parsedSortOrder };
 
+  // need to test for populate
+  const parsePopulateString = (populateStr: string): any[] => {
+    const paths = populateStr.trim().split(/\s+/); // split by space
+    const populateMap: Record<string, any> = {};
+
+    for (const path of paths) {
+      const [root, nested] = path.split(".");
+      if (!nested) {
+        if (!populateMap[root]) populateMap[root] = { path: root };
+      } else {
+        if (!populateMap[root]) {
+          populateMap[root] = { path: root, populate: { path: nested } };
+        } else if (!populateMap[root].populate) {
+          populateMap[root].populate = { path: nested };
+        } else {
+          // Support deeper nesting if needed
+          const current = populateMap[root].populate;
+          populateMap[root].populate = Array.isArray(current)
+            ? [...current, { path: nested }]
+            : [current, { path: nested }];
+        }
+      }
+    }
+
+    return Object.values(populateMap);
+  };
+
   return {
     page: parsedPage,
     limit: parsedLimit,
     skip,
     sortCondition,
-    populate,
+    populate: parsePopulateString(populate),
   };
 };
 
@@ -82,7 +109,7 @@ export const filterHelper = <T extends Record<string, unknown>>(
   schemaName: Document,
 ): Partial<TFilter> => {
   const schemaKeys = Object.keys(schemaName.schema.obj);
-  const { search, ...rest } = pic(reqQuery, ["search", ...schemaKeys]);
+  const { search, ids, _id, ...rest } = pic(reqQuery, ["search", "ids", "_id", ...schemaKeys]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const conditions: Record<string, any>[] = [];
@@ -94,6 +121,12 @@ export const filterHelper = <T extends Record<string, unknown>>(
         [field]: { $regex: search, $options: "i" },
       })),
     });
+  }
+
+  if (_id) conditions.push({ _id: new Types.ObjectId(_id) });
+
+  if (Array.isArray(ids) && ids?.length) {
+    conditions.push({ _id: { $in: ids?.map((id) => new Types.ObjectId(id)) } });
   }
 
   // Handle exact filters and operators (_gt, _lt, etc.)

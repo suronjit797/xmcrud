@@ -65,11 +65,11 @@ npm install express mongoose ioredis
 ```ts
 import express from "express";
 import mongoose from "mongoose";
-import { generatecurdController } from "express-easy-curd";
+import { generateCrudController } from "express-easy-curd";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
-const userController = generatecurdController(UserModel, "User");
+const userController = generateCrudController(UserModel, "User");
 
 const app = express();
 app.use(express.json());
@@ -99,11 +99,11 @@ app.listen(3000, () => {
 ```ts
 import express from "express";
 import mongoose from "mongoose";
-import { generatecurdRoutes } from "express-easy-curd";
+import { generateCrudRoutes } from "express-easy-curd";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String, age: Number }));
 
-const curdRouter = generatecurdRoutes({
+const curdRouter = generateCrudRoutes({
   mongooseModel: UserModel,
   name: "User",
   basePath: "/users",
@@ -145,9 +145,9 @@ app.use("/api", curdRouter);
 import Redis from "ioredis";
 const redisClient = new Redis();
 
-const userController = generatecurdController(UserModel, "User", redisClient, 600);
+const userController = generateCrudController(UserModel, "User", redisClient, 600);
 
-const curdRouter = generatecurdRoutes({
+const curdRouter = generateCrudRoutes({
   mongooseModel: UserModel,
   name: "User",
   basePath: "/users",
@@ -170,7 +170,7 @@ const curdRouter = generatecurdRoutes({
 const pagination = paginationHelper(req.query);
 const filter = filterHelper(req.query, req.partialFilter || [], new UserModel());
 
-const UserRouter = generatecurdRoutes({
+const UserRouter = generateCrudRoutes({
   mongooseModel: UserModel,
   name: "User",
   middlewares: {

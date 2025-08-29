@@ -1,5 +1,5 @@
 import express, { RequestHandler, Router } from "express";
-import generatecurdController from "./controller"; // path to your globalController
+import generateCrudController from "./controller"; // path to your globalController
 import { Model } from "mongoose";
 import type ioredisType from "ioredis";
 
@@ -11,9 +11,10 @@ type curdMiddlewares = {
   updateMany?: RequestHandler[];
   remove?: RequestHandler[];
   removeMany?: RequestHandler[];
+  removeManyPost?: RequestHandler[];
 };
 
-export const generatecurdRoutes = <T>({
+export const generateCrudRoutes = <T>({
   mongooseModel,
   name,
   basePath = "",
@@ -28,14 +29,15 @@ export const generatecurdRoutes = <T>({
   ioredis?: ioredisType;
   cachedTime?: number;
 }): Router => {
-  const controller = generatecurdController(mongooseModel, name, ioredis, cachedTime);
+  const controller = generateCrudController(mongooseModel, name, ioredis, cachedTime);
   const router = express.Router();
 
   router.get(`${basePath}/`, ...(middlewares.getAll || []), controller.getAll);
   router.post(`${basePath}/`, ...(middlewares.create || []), controller.create);
-  router.put(`${basePath}/`, ...(middlewares.updateMany || []), controller.updateMany);
-  router.patch(`${basePath}/delete-many`, ...(middlewares.updateMany || []), controller.updateMany);
-  router.delete(`${basePath}/update-many`, ...(middlewares.removeMany || []), controller.removeMany);
+  router.put(`${basePath}/update-many`, ...(middlewares.updateMany || []), controller.updateMany);
+  router.patch(`${basePath}/update-many`, ...(middlewares.updateMany || []), controller.updateMany);
+  router.delete(`${basePath}/delete-many`, ...(middlewares.removeMany || []), controller.removeMany);
+  router.post(`${basePath}/delete-many`, ...(middlewares.removeManyPost || []), controller.removeManyPost);
 
   router.get(`${basePath}/:id`, ...(middlewares.getSingle || []), controller.getSingle);
   router.put(`${basePath}/:id`, ...(middlewares.update || []), controller.update);

@@ -29,6 +29,7 @@ const globalController = <TType>(
   updateMany: RequestHandler;
   remove: RequestHandler;
   removeMany: RequestHandler;
+  removeManyPost: RequestHandler;
 } => {
   return {
     // create
@@ -200,6 +201,22 @@ const globalController = <TType>(
         if (ioredis) await delIoredisCache(ioredis, name);
 
         const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
+        const data = await ModelName.deleteMany(filter);
+
+        sendResponse(res, 200, {
+          success: true,
+          message: `${name}s deleted successfully`,
+          data,
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+    removeManyPost: async (req, res, next) => {
+      try {
+        if (ioredis) await delIoredisCache(ioredis, name);
+
+        const filter = filterHelper(req.body, req.partialFilter || [], new ModelName());
         const data = await ModelName.deleteMany(filter);
 
         sendResponse(res, 200, {
