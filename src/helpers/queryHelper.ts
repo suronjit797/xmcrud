@@ -67,7 +67,8 @@ export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
   const sortCondition: ISortCondition = { [sortBy]: parsedSortOrder };
 
   // need to test for populate
-  const parsePopulateString = (populateStr: string): any[] => {
+  const parsePopulateString = (populateStr: string = ""): any => {
+    if (typeof populateStr !== "string" || !populateStr.length) return "";
     const paths = populateStr.trim().split(/\s+/); // split by space
     const populateMap: Record<string, any> = {};
 
@@ -108,7 +109,7 @@ export const filterHelper = <T extends Record<string, unknown>>(
   partialSearching: string[],
   schemaName: Document,
 ): Partial<TFilter> => {
-  const schemaKeys = Object.keys(schemaName.schema.obj);
+  const schemaKeys = Object.keys(schemaName?.schema?.paths);
   const { search, ids, _id, ...rest } = pic(reqQuery, ["search", "ids", "_id", ...schemaKeys]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
