@@ -61,6 +61,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "dayjs": "^1.11.18",
     "express": ">=4.0.0",
     "ioredis": ">=5.0.0",
     "mongoose": ">=6.0.0"
@@ -68,7 +69,8 @@
   "peerDependencies": {
     "express": ">=4.0.0",
     "ioredis": ">=5.0.0",
-    "mongoose": ">=6.0.0"
+    "mongoose": ">=6.0.0",
+    "dayjs": ">=1.11.18"
   },
   "engines": {
     "node": ">=16.0.0 "

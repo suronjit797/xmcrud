@@ -1,5 +1,6 @@
 import { Document, SortOrder, Types } from "mongoose";
-import { IPagination, ISortCondition, TFilter } from "../Types";
+import { IPagination, ISortCondition, RecordUnknown, TFilter } from "../Types";
+import dayjs from "dayjs";
 
 // Supported operators for query
 const operatorsMap: Record<string, string> = {
@@ -84,9 +85,7 @@ export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
         } else {
           // Support deeper nesting if needed
           const current = populateMap[root].populate;
-          populateMap[root].populate = Array.isArray(current)
-            ? [...current, { path: nested }]
-            : [current, { path: nested }];
+          populateMap[root].populate = Array.isArray(current) ? [...current, { path: nested }] : [current, { path: nested }];
         }
       }
     }
@@ -104,16 +103,18 @@ export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
 };
 
 /*######################## Filter Helper ####################################*/
-export const filterHelper = <T extends Record<string, unknown>>(
-  reqQuery: T,
-  partialSearching: string[],
-  schemaName: Document,
-): Partial<TFilter> => {
+export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearching: string[], schemaName: Document): Partial<TFilter> => {
+  const query = { ...reqQuery };
   const schemaKeys = Object.keys(schemaName?.schema?.paths);
-  const { search, ids, _id, ...rest } = pic(reqQuery, ["search", "ids", "_id", ...schemaKeys]);
+  const schemaKeyWithTypes: Record<string, string> = {};
+  const conditions: RecordUnknown[] = [];
+  const acceptedFilterTypes = ["String", "Number", "Boolean", "Date", "ObjectId"];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const conditions: Record<string, any>[] = [];
+  Object.entries(schemaName?.schema?.paths)?.forEach(([key, value]) => {
+    if (acceptedFilterTypes.includes(value?.instance)) schemaKeyWithTypes[key] = value?.instance;
+  });
+
+  const { search, ids, ...rest } = pic(query, ["search", "ids", ...schemaKeys]);
 
   // Handle search queries (partial match)
   if (search && partialSearching.length > 0) {
@@ -124,42 +125,78 @@ export const filterHelper = <T extends Record<string, unknown>>(
     });
   }
 
-  if (_id) conditions.push({ _id: new Types.ObjectId(_id) });
+  // if (_id) conditions.push({ _id: new Types.ObjectId(_id) });
 
-  if (Array.isArray(ids) && ids?.length) {
-    conditions.push({ _id: { $in: ids?.map((id) => new Types.ObjectId(id)) } });
-  }
+  // Handle multiple ids
+  if (Array.isArray(ids) && ids?.length) conditions.push({ _id: { $in: ids?.map((id: string) => new Types.ObjectId(id)) } });
 
-  // Handle exact filters and operators (_gt, _lt, etc.)
+  // handle types
+  const castValueByType = (raw: string, type: string): any => {
+    switch (type) {
+      case "Number": {
+        const num = Number(raw);
+        return isNaN(num) ? undefined : num;
+      }
+      case "Date": {
+        const date = dayjs(raw);
+        return date.isValid() ? date.toDate() : undefined;
+      }
+      case "ObjectId":
+        // return /^[a-f\d]{24}$/i.test(raw) ? raw : undefined;
+        return typeof raw === "string" ? new Types.ObjectId(raw) : undefined;
+      case "Boolean":
+        return raw === "true" || raw === "1";
+      case "String":
+      default:
+        return raw;
+    }
+  };
+
   Object.entries(rest).forEach(([key, val]) => {
     if (val === undefined || val === null || val === "") return;
+
     const raw = val.toString().trim();
     const opKey = Object.keys(operatorsMap).find((sfx) => key.endsWith(sfx));
     const operator = opKey && operatorsMap[opKey];
     const field = opKey ? key.slice(0, -opKey.length) : key;
+    const fieldType = schemaKeyWithTypes[field];
+
+    if (!fieldType) return; // Skip unknown fields
+
+    let value: any;
 
     if (operator) {
-      let val: any;
+      // console.log({ key, val, raw, opKey, operator, field, fieldType });
       if (["$in", "$nin"].includes(operator)) {
-        val = toArray(raw);
+        const arr = toArray(raw);
+        value = arr.map((item) => castValueByType(item, fieldType)).filter((v) => v !== undefined);
       } else if (operator === "$exists") {
-        val = raw === "true" || raw === "1";
+        value = raw === "true" || raw === "1";
       } else if (operator === "$regex") {
-        val = new RegExp(raw, "i");
+        value = new RegExp(raw, "i");
       } else if (["$gt", "$lt", "$gte", "$lte"].includes(operator)) {
-        const num = Number(raw);
-        if (isNaN(num)) return;
-        val = num;
+        value = castValueByType(raw, fieldType);
+        if (value === undefined) return;
       } else {
-        val = toValue(raw);
+        value = castValueByType(raw, fieldType);
       }
 
-      conditions.push({ [field]: { [operator]: val } });
+      conditions.push({ [field]: { [operator]: value } });
     } else {
-      const val = typeof raw === "string" && raw.includes(",") ? { $in: toArray(raw) } : toValue(raw);
+      const isArray = typeof raw === "string" && raw.includes(",");
+      const val = isArray
+        ? {
+            $in: toArray(raw)
+              .map((item) => castValueByType(item, fieldType))
+              .filter((v) => v !== undefined),
+          }
+        : castValueByType(raw, fieldType);
+
       conditions.push({ [key]: val });
     }
   });
+
+  console.log(conditions);
 
   return conditions.length > 0 ? { $and: conditions } : {};
 };

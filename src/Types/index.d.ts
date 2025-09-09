@@ -38,6 +38,8 @@ export type IPagination = {
 
 export type TFilter = { [key: string]: object };
 
+export type RecordUnknown = Record<string, unknown>;
+
 // export type curdMiddlewares = {
 //   create?: RequestHandler[];
 //   getAll?: RequestHandler[];
