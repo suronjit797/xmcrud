@@ -34,6 +34,7 @@ export type IPagination = {
   skip: number;
   sortCondition: ISortCondition;
   populate?: string | Record<string>;
+  select?: string;
 };
 
 export type TFilter = { [key: string]: object };

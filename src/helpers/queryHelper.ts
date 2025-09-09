@@ -43,19 +43,21 @@ export const pic = <T extends Record<string, any>>(obj: T, schemaFields: string[
 };
 
 /*######################## Pagination helpers ####################################*/
-export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
+export const paginationHelper = (obj: RecordUnknown): IPagination => {
   const {
     page = 1,
     limit = 10,
     sortBy = "createdAt",
     sortOrder = "desc",
     populate = "",
-  } = pic(obj, ["page", "limit", "sortBy", "sortOrder", "populate"]) as {
+    select = "",
+  } = pic(obj, ["page", "limit", "sortBy", "sortOrder", "populate", "select"]) as {
     page?: number;
     limit?: number;
     sortBy?: string;
     sortOrder?: SortOrder;
     populate?: string;
+    select?: string;
   };
 
   const parsedPage = Math.abs(Number(page)) || 1;
@@ -89,7 +91,6 @@ export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
         }
       }
     }
-
     return Object.values(populateMap);
   };
 
@@ -99,6 +100,7 @@ export const paginationHelper = (obj: Record<string, unknown>): IPagination => {
     skip,
     sortCondition,
     populate: parsePopulateString(populate),
+    select,
   };
 };
 

@@ -69,12 +69,13 @@ const globalController = <TType>(
           const pagination = paginationHelper(req.query);
           const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
 
-          const { page, limit, skip, sortCondition, populate } = pagination;
+          const { page, limit, skip, sortCondition, populate, select } = pagination;
           const data = (await ModelName.find(filter)
             .limit(limit)
             .skip(skip)
             .sort(sortCondition)
             .populate(populate || "")
+            .select(select || "")
             .lean()) as TType[];
 
           const total = await ModelName.countDocuments(filter);
