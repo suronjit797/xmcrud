@@ -5,5 +5,5 @@
 
 export { default as generateCrudController } from "./global/controller";
 export { generateCrudRoutes } from "./global/routes";
-export { sendResponse, partialFilterMiddlewares } from "./helpers/globalHelper";
+export { sendResponse, partialFilterMiddlewares, ApiError } from "./helpers/globalHelper";
 export { filterHelper, paginationHelper, pic } from "./helpers/queryHelper";
