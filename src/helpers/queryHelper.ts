@@ -112,8 +112,17 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
   const conditions: RecordUnknown[] = [];
   const acceptedFilterTypes = ["String", "Number", "Boolean", "Date", "ObjectId"];
 
-  Object.entries(schemaName?.schema?.paths)?.forEach(([key, value]) => {
-    if (acceptedFilterTypes.includes(value?.instance)) schemaKeyWithTypes[key] = value?.instance;
+  // Object.entries(schemaName?.schema?.paths)?.forEach(([key, value]) => {
+  //   if (acceptedFilterTypes.includes(value?.instance)) schemaKeyWithTypes[key] = value?.instance;
+  // });
+
+  Object.entries(schemaName?.schema?.paths || {}).forEach(([key, value]: [string, any]) => {
+    let instance = value?.instance;
+
+    // If it's an Array, check the caster type
+    if (instance === "Array" && value?.caster?.instance) instance = value.caster.instance;
+
+    if (acceptedFilterTypes.includes(instance)) schemaKeyWithTypes[key] = instance;
   });
 
   const { search, ids, ...rest } = pic(query, ["search", "ids", ...schemaKeys]);

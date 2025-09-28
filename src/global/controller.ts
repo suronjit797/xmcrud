@@ -112,8 +112,12 @@ const globalController = <TType>(
 
         if (!data) {
           if (!ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
+          const { populate, select } = paginationHelper(req.query);
 
-          data = (await ModelName.findById(req.params.id).lean()) as TType | null;
+          data = (await ModelName.findById(req.params.id)
+            .populate(populate || "")
+            .select(select || "")
+            .lean()) as TType | null;
           if (ioredis && data) {
             await ioredis.set(cacheKey, JSON.stringify(data), "EX", cachedTime);
           }
