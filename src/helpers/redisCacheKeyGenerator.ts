@@ -1,9 +1,9 @@
 import { Request } from "express";
 
-function redisGenerateCacheKey(req: Request): string {
+export function redisGenerateCacheKey(req: Request): string {
   const baseUrl = req.baseUrl
     .replace(/^\/+|\/+$/g, "") // remove leading/trailing slashes
-    .replace(/\//g, ":");      // convert slashes to colons
+    .replace(/\//g, ":"); // convert slashes to colons
 
   // Normalize and sort query parameters
   const sortedQuery = Object.entries(req.query)
