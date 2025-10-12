@@ -142,7 +142,8 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
   if (Array.isArray(ids) && ids?.length) conditions.push({ _id: { $in: ids?.map((id: string) => new Types.ObjectId(id)) } });
 
   // handle types
-  const castValueByType = (raw: string, type: string): any => {
+  const castValueByType = (raw: string | null, type: string): any => {
+    if (raw === "null") raw = null;
     switch (type) {
       case "Number": {
         const num = Number(raw);
@@ -154,7 +155,7 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
       }
       case "ObjectId":
         // return /^[a-f\d]{24}$/i.test(raw) ? raw : undefined;
-        return typeof raw === "string" ? new Types.ObjectId(raw) : undefined;
+        return typeof raw === "string" ? new Types.ObjectId(raw) : raw;
       case "Boolean":
         return raw === "true" || raw === "1";
       case "String":
