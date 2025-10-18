@@ -155,7 +155,7 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
       }
       case "ObjectId":
         // return /^[a-f\d]{24}$/i.test(raw) ? raw : undefined;
-        return typeof raw === "string" ? new Types.ObjectId(raw) : raw;
+        return typeof raw === "string" ? new Types.ObjectId(raw) : raw === null ? null : undefined;
       case "Boolean":
         return raw === "true" || raw === "1";
       case "String":

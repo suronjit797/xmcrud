@@ -4,6 +4,8 @@ A lightweight helper library for building Express.js routes, controllers, and Re
 
 > ⚡ Build scalable REST APIs in minutes with Express and Mongoose.
 
+npx easy-curd add user
+
 ---
 
 <h2 id="table-of-contents">📚 Table of Contents</h2>
