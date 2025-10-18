@@ -1,6 +1,6 @@
 {
   "name": "express-easy-curd",
-  "version": "1.4.6",
+  "version": "2.1.1",
   "description": "A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
