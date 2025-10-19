@@ -1,7 +1,7 @@
 {
-  "name": "express-easy-curd",
-  "version": "2.1.1",
-  "description": "A lightweight helper library for building Express.js routes, controllers, and Redis-enhanced middleware with optional Redis support.",
+  "name": "xmcrud",
+  "version": "1.1.1",
+  "description": "A lightweight helper library for building Express.js routes, controllers, advanced query with mongoose, and Redis-enhanced middleware with optional Redis support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -12,7 +12,7 @@
     }
   },
   "bin": {
-    "easy-curd": "./dist/cli.js"
+    "xmcrud": "./dist/cli.js"
   },
   "files": [
     "dist/**/*"
