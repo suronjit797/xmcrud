@@ -1,4 +1,4 @@
-import { generateCrudRoutes, partialFilterMiddlewares } from "express-easy-curd";
+import { generateCrudRoutes, partialFilterMiddlewares } from "xmcrud";
 import {{ModelName}}Model from "./{{name}}.model";
 import { Router } from "express"
 
