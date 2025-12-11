@@ -2,6 +2,7 @@ import express, { RequestHandler, Router } from "express";
 import generateCrudController from "./controller"; // path to your globalController
 import { Model } from "mongoose";
 import type ioredisType from "ioredis";
+import { Logger } from "../helpers/globalHelper";
 
 type curdMiddlewares = {
   create?: RequestHandler[];
@@ -21,6 +22,7 @@ export const generateCrudRoutes = <T>({
   middlewares = {},
   ioredis,
   cachedTime,
+  logger,
 }: {
   mongooseModel: Model<T>;
   name: string;
@@ -28,8 +30,9 @@ export const generateCrudRoutes = <T>({
   middlewares?: curdMiddlewares;
   ioredis?: ioredisType;
   cachedTime?: number;
+  logger?: Logger;
 }): Router => {
-  const controller = generateCrudController(mongooseModel, name, ioredis, cachedTime);
+  const controller = generateCrudController(mongooseModel, name, ioredis, cachedTime, logger);
   const router = express.Router();
 
   router.get(`${basePath}/`, ...(middlewares.getAll || []), controller.getAll);

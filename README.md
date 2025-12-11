@@ -114,6 +114,17 @@ const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
 const userController = generateCrudController(UserModel, "User");
 
+/* 
+other options
+generateCrudController(  ModelName: mongoose model,
+  name: string,
+  ioredis?: ioredisType,
+  cachedTime: number = 600,
+  logger?: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
+  ) 
+
+*/
+
 const app = express();
 app.use(express.json());
 
@@ -175,6 +186,9 @@ const userRouter = generateCrudRoutes({
   basePath: "/users",
   ioredis: redisClient,
   cachedTime: 600, // in seconds (default: 10 minutes)
+  // optionals
+  middlewares:[],
+  logger?: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
 });
 ```
 
@@ -186,7 +200,7 @@ const userRouter = generateCrudRoutes({
 | -------------------------------------- | ------------------------------------------------ |
 | `filterHelper(req.query, keys, model)` | Builds MongoDB filters dynamically               |
 | `paginationHelper(req.query)`          | Handles pagination & sorting                     |
-| `sendResponse(res, status, payload)`              | Standardized API response structure              |
+| `sendResponse(res, status, payload)`   | Standardized API response structure              |
 | `ApiError`                             | Custom error class                               |
 | `partialFilterMiddlewares(keys)`       | Enables partial search on selected string fields |
 
@@ -249,13 +263,13 @@ GET /orders?populate=user product
 GET /users?sortBy=createdAt&sortOrder=asc&page=2&limit=20
 ```
 
-| Param       | Description                               |
-| ----------- | ----------------------------------------- |
-| `sortBy`    | Sort by field                             |
-| `sortOrder` | "asc", "ascending", "desc", descending"   |
-| `page`      | Page number (default: 1)                  |
-| `limit`     | Documents per page (default: 10)          |
-| `skip`      | Skip documents manually                   |
+| Param       | Description                             |
+| ----------- | --------------------------------------- |
+| `sortBy`    | Sort by field                           |
+| `sortOrder` | "asc", "ascending", "desc", descending" |
+| `page`      | Page number (default: 1)                |
+| `limit`     | Documents per page (default: 10)        |
+| `skip`      | Skip documents manually                 |
 
 ---
 
@@ -281,8 +295,6 @@ generateCrudRoutes({
 ```
 
 ---
-
-
 
 <!-- ## 🤝 Contributing
 
@@ -315,4 +327,3 @@ MIT © [Suronjit Pal](https://github.com/suronjit797)
 > ```
 >
 > and start coding instantly!
-
