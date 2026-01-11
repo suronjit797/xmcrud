@@ -1,6 +1,7 @@
 import { Document, SortOrder, Types } from "mongoose";
 import { IPagination, ISortCondition, RecordUnknown, TFilter } from "../Types";
 import dayjs from "dayjs";
+import { ApiError } from "./globalHelper";
 
 // Supported operators for query
 const operatorsMap: Record<string, string> = {
@@ -62,7 +63,9 @@ export const paginationHelper = (obj: RecordUnknown): IPagination => {
 
   const parsedPage = Math.abs(Number(page)) || 1;
   const parsedLimit = Math.min(Math.abs(Number(limit || 10)), 100);
-  const skip = (parsedPage - 1) * parsedLimit;
+
+  const MAX_SKIP = 1_000_000;
+  const skip = Math.min((parsedPage - 1) * parsedLimit, MAX_SKIP);
 
   const validSortOrders: SortOrder[] = [1, -1, "asc", "ascending", "desc", "descending"];
   const parsedSortOrder: SortOrder = validSortOrders.includes(sortOrder) ? sortOrder : "desc";
@@ -181,6 +184,7 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
       // console.log({ key, val, raw, opKey, operator, field, fieldType });
       if (["$in", "$nin"].includes(operator)) {
         const arr = toArray(raw);
+        if (arr.length > 500) throw new ApiError(400, "Too many values");
         value = arr.map((item) => castValueByType(item, fieldType)).filter((v) => v !== undefined);
       } else if (operator === "$exists") {
         value = raw === "true" || raw === "1";
@@ -208,7 +212,7 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
     }
   });
 
-  console.log(conditions);
+  // console.log(conditions);
 
   return conditions.length > 0 ? { $and: conditions } : {};
 };

@@ -1,4 +1,4 @@
-import { generateCrudRoutes, partialFilterMiddlewares } from "xmcrud";
+import { generateCrudRoutes, partialFilterMiddlewares, notFoundMiddleware } from "xmcrud";
 import {{ModelName}}Model from "./{{name}}.model";
 import { Router } from "express"
 
@@ -13,12 +13,12 @@ const curdRouter =  generateCrudRoutes({
   // ioredis: redis,  // optional if has redis in app
   middlewares: {
     getAll: [partialFilterMiddlewares(partialFilterItems)],
-    // create: [],  // middlewares are optional
-    // removeMany: [],  // middlewares are optional
-    // updateMany: [],  // middlewares are optional
     // getSingle: [],  // middlewares are optional
+    // create: [],  // middlewares are optional
     // update: [],  // middlewares are optional
     // remove: [],  // middlewares are optional
+    // updateMany: [notFoundMiddleware],  // middlewares are optional  //notFoundMiddleware for disabled access to end user
+    // removeMany: [notFoundMiddleware],  // middlewares are optional  //notFoundMiddleware for disabled access to end user
   },
 });
 

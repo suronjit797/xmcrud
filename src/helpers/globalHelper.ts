@@ -1,4 +1,4 @@
-import { NextFunction, RequestHandler, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import { TPayload } from "../Types";
 
 export interface Logger {
@@ -50,4 +50,17 @@ export const handleError = (error: unknown, next: NextFunction, logger?: Logger,
     logger.errorLogger(name ? `(${name}) ${message}` : message);
   }
   next(error);
+};
+
+export const notFoundMiddleware: RequestHandler = (req, res) => {
+  res.status(404).send({
+    success: false,
+    message: "Route not found",
+    errorMessages: [
+      {
+        path: req.originalUrl,
+        message: "Route not found",
+      },
+    ],
+  });
 };

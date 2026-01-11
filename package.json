@@ -1,9 +1,10 @@
 {
   "name": "xmcrud",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "A lightweight helper library for building Express.js routes, controllers, advanced query with mongoose, and Redis-enhanced middleware with optional Redis support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "readmeFilename": "README.md",
   "exports": {
     ".": {
       "require": "./dist/index.js",
@@ -42,7 +43,17 @@
     "express-smart-helper",
     "curd",
     "xmcrud",
-    "express helper"
+    "express helper",
+    "crud",
+    "mongoose-crud",
+    "express-crud",
+    "rest-crud",
+    "rest-api-generator",
+    "express-api",
+    "express-crud-generator",
+    "auto-crud",
+    "crud-generator",
+    "mongodb-crud"
   ],
   "author": "Suronjit Pal (suronjit797)",
   "license": "MIT",

@@ -1,3 +1,4 @@
+
 # ⚡ XMCRUD — Express + Mongoose CRUD Made Easy
 
 [![npm version](https://img.shields.io/npm/v/xmcrud.svg?style=flat&color=blue)](https://www.npmjs.com/package/xmcrud)
@@ -170,6 +171,29 @@ app.use("/api", crudRouter);
 | PATCH  | `/api/users/update-many` | Update multiple users |
 | DELETE | `/api/users/delete-many` | Delete multiple users |
 
+### 🚫 Hiding specific auto-generated routes
+
+You can disable any generated CRUD route using `notFoundMiddleware`.
+
+This is useful when:
+
+- you don’t want to expose bulk delete
+- you want read-only API
+- you want custom logic instead of default auto CRUD
+
+````ts
+import { generateCrudRoutes, notFoundMiddleware } from "xmcrud";
+
+const router = generateCrudRoutes({
+  mongooseModel: UserModel,
+  name: "User",
+  basePath: "/users",
+  middlewares: {
+    removeMany: [notFoundMiddleware],  // hide Delete Many route
+    updateMany: [notFoundMiddleware],  // hide Update Many route
+  },
+});
+
 ---
 
 ### 3️⃣ With Redis Caching (Optional)
@@ -190,7 +214,7 @@ const userRouter = generateCrudRoutes({
   middlewares:[],
   logger?: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
 });
-```
+````
 
 ---
 
@@ -296,6 +320,29 @@ generateCrudRoutes({
 
 ---
 
+## 🔐 Security improvement recommendations for your projects
+
+````md
+## 🔐 Security Practices
+
+XMCRUD includes:
+- Centralized ApiError handler
+- Optional Redis caching layer isolation
+- Disabled auto-routes via notFoundMiddleware
+- Strict query parser to prevent NoSQL injection
+- Set `limit` maximum 100 value in pagination
+
+### Recommended Security Checklist
+
+- ObjectId validation for all :id requests
+- Always validate ObjectId before DB query
+- Never return raw Mongo errors to client
+- Disable routes you do not use
+- Sanitize `_regex` queries
+- Use basic all validation for security in projects
+
+---
+
 <!-- ## 🤝 Contributing
 
 Contributions are welcome!
@@ -327,3 +374,5 @@ MIT © [Suronjit Pal](https://github.com/suronjit797)
 > ```
 >
 > and start coding instantly!
+````
+
