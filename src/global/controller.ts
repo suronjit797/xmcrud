@@ -7,22 +7,17 @@ import redisGenerateCacheKey from "../helpers/redisCacheKeyGenerator";
 import { filterHelper, paginationHelper } from "../helpers/queryHelper";
 
 const { ObjectId } = Types;
+const defaultProtectedFields = ["_id", "createdAt", "updatedAt", "__v"];
 
-const delIoredisCache = async (ioredis: ioredisType, name: string): Promise<void> => {
-  if (ioredis && name) {
-    const cacheKey = `*api:v1:${name}*`.toLowerCase();
-    const keys = await ioredis.keys(cacheKey);
-    if (keys.length > 0) await ioredis.call("DEL", ...keys);
-  }
-};
-
-const globalController = <TType>(
-  ModelName: Model<TType>,
-  name: string,
-  ioredis?: ioredisType,
-  cachedTime: number = 600,
-  logger?: Logger,
-): {
+export interface GlobalControllerOptions<TType> {
+  model: Model<TType>;
+  name: string;
+  ioredis?: ioredisType;
+  cachedTime?: number;
+  logger?: Logger;
+  protectedFields?: readonly string[];
+}
+export interface GlobalControllerReturn {
   create: RequestHandler;
   getAll: RequestHandler;
   getSingle: RequestHandler;
@@ -31,14 +26,49 @@ const globalController = <TType>(
   remove: RequestHandler;
   removeMany: RequestHandler;
   removeManyPost: RequestHandler;
-} => {
+}
+
+const delIoredisCache = async (ioredis: ioredisType, name: string): Promise<void> => {
+  if (ioredis && name) {
+    const cacheKey = `*api:*:${name}*`.toLowerCase();
+    const keys = await ioredis.keys(cacheKey);
+    if (keys.length > 0) await ioredis.call("DEL", ...keys);
+  }
+};
+
+// const globalController = <TType>(
+//   ModelName: Model<TType>,
+//   name: string,
+//   ioredis?: ioredisType,
+//   cachedTime: number = 600,
+//   logger?: Logger,
+//   protectedFields: string[] = [],
+// ): {
+//   create: RequestHandler;
+//   getAll: RequestHandler;
+//   getSingle: RequestHandler;
+//   update: RequestHandler;
+//   updateMany: RequestHandler;
+//   remove: RequestHandler;
+//   removeMany: RequestHandler;
+//   removeManyPost: RequestHandler;
+// } => {
+
+export const globalController = <TType extends object>({
+  model,
+  name,
+  ioredis,
+  cachedTime = 600,
+  logger,
+  protectedFields = [],
+}: GlobalControllerOptions<TType>): GlobalControllerReturn => {
   return {
     // create
     create: async (req, res, next) => {
       try {
         if (ioredis) await delIoredisCache(ioredis, name);
 
-        const data = await ModelName.create(req.body);
+        const data = await model.create(req.body);
         sendResponse({ req, res, status: 201, payload: { success: true, message: `${name} created successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
@@ -64,18 +94,30 @@ const globalController = <TType>(
 
         if (!values.data.length) {
           const pagination = paginationHelper(req.query);
-          const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
+          const filter = filterHelper(req.query, req.partialFilter || [], new model());
 
           const { page, limit, skip, sortCondition, populate, select } = pagination;
-          const data = (await ModelName.find(filter)
-            .limit(limit)
-            .skip(skip)
-            .sort(sortCondition)
-            .populate(populate || "")
-            .select(select || "")
-            .lean()) as TType[];
+          // const data = (await ModelName.find(filter)
+          //   .limit(limit)
+          //   .skip(skip)
+          //   .sort(sortCondition)
+          //   .populate(populate || "")
+          //   .select(select || "")
+          //   .lean()) as TType[];
+          // const total = await ModelName.countDocuments(filter);
 
-          const total = await ModelName.countDocuments(filter);
+          const [data, total] = await Promise.all([
+            model
+              .find(filter)
+              .limit(limit)
+              .skip(skip)
+              .sort(sortCondition)
+              .populate(populate || "")
+              .select(select || "")
+              .lean() as Promise<TType[]>,
+            model.countDocuments(filter),
+          ]);
+
           values = { data, meta: { page, limit, total } };
 
           if (ioredis && values.data.length) {
@@ -112,7 +154,8 @@ const globalController = <TType>(
           if (!ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
           const { populate, select } = paginationHelper(req.query);
 
-          data = (await ModelName.findById(req.params.id)
+          data = (await model
+            .findById(req.params.id)
             .populate(populate || "")
             .select(select || "")
             .lean()) as TType | null;
@@ -120,7 +163,8 @@ const globalController = <TType>(
             await ioredis.set(cacheKey, JSON.stringify(data), "EX", cachedTime);
           }
         }
-
+        // response
+        if (!data) throw new ApiError(404, `${name} not found`);
         sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} fetched successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
@@ -133,35 +177,28 @@ const globalController = <TType>(
         if (ioredis) await delIoredisCache(ioredis, name);
         if (!ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
 
-        const data = await ModelName.findByIdAndUpdate(req.params.id, req.body, {
-          new: true,
-          runValidators: true,
-        });
+        const updateBody = { ...req.body };
+        [...(protectedFields || []), ...defaultProtectedFields].forEach((field) => delete updateBody[field]);
 
-        if (!data) {
-          throw new ApiError(500, "Server Error");
-        }
+        const data = await model.findByIdAndUpdate(req.params.id, updateBody, { new: true, runValidators: true });
 
+        if (!data) throw new ApiError(404, `${name} not found`);
         sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} updated successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
     },
 
-    // update
+    // update many
     updateMany: async (req, res, next) => {
       try {
         if (ioredis) await delIoredisCache(ioredis, name);
 
-        const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
+        const filter = filterHelper(req.query, req.partialFilter || [], new model());
+        const result = await model.updateMany(filter, req.body, { runValidators: true });
 
-        const result = await ModelName.updateMany(filter, req.body, { runValidators: true });
-
-        if (result.modifiedCount === 0) {
-          throw new ApiError(404, "No documents updated");
-        }
-        const data = await ModelName.find(filter);
-
+        if (result.modifiedCount === 0) throw new ApiError(404, "not found");
+        const data = await model.find(filter);
         sendResponse({ req, res, status: 200, payload: { success: true, message: `${name}s updated successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
@@ -174,7 +211,7 @@ const globalController = <TType>(
         if (ioredis) await delIoredisCache(ioredis, name);
         if (!ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
 
-        const data = await ModelName.findByIdAndDelete(req.params.id);
+        const data = await model.findByIdAndDelete(req.params.id);
 
         sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} deleted successfully`, data }, logger });
       } catch (error) {
@@ -182,13 +219,13 @@ const globalController = <TType>(
       }
     },
 
-    // removeMany
+    // remove many
     removeMany: async (req, res, next) => {
       try {
         if (ioredis) await delIoredisCache(ioredis, name);
 
-        const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
-        const data = await ModelName.deleteMany(filter);
+        const filter = filterHelper(req.query, req.partialFilter || [], new model());
+        const data = await model.deleteMany(filter);
 
         sendResponse({ req, res, status: 200, payload: { success: true, message: `${name}s deleted successfully`, data }, logger });
       } catch (error) {
@@ -199,8 +236,8 @@ const globalController = <TType>(
       try {
         if (ioredis) await delIoredisCache(ioredis, name);
 
-        const filter = filterHelper(req.body, req.partialFilter || [], new ModelName());
-        const data = await ModelName.deleteMany(filter);
+        const filter = filterHelper(req.body, req.partialFilter || [], new model());
+        const data = await model.deleteMany(filter);
 
         sendResponse({ req, res, status: 200, payload: { success: true, message: `${name}s deleted successfully`, data }, logger });
       } catch (error) {

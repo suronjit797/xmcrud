@@ -1,4 +1,3 @@
-
 # ⚡ XMCRUD — Express + Mongoose CRUD Made Easy
 
 [![npm version](https://img.shields.io/npm/v/xmcrud.svg?style=flat&color=blue)](https://www.npmjs.com/package/xmcrud)
@@ -113,16 +112,17 @@ import { generateCrudController } from "xmcrud";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
-const userController = generateCrudController(UserModel, "User");
+const userController = generateCrudController({ model: UserModel, name: "User" });
 
 /* 
 other options
-generateCrudController(  ModelName: mongoose model,
+generateCrudController({model:  mongoose model,
   name: string,
   ioredis?: ioredisType,
   cachedTime: number = 600,
   logger?: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
-  ) 
+  protectedFields: []
+  }) 
 
 */
 
@@ -212,7 +212,8 @@ const userRouter = generateCrudRoutes({
   cachedTime: 600, // in seconds (default: 10 minutes)
   // optionals
   middlewares:[],
-  logger?: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
+  logger: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
+  protectedFields:[]  // for update
 });
 ````
 
@@ -220,13 +221,13 @@ const userRouter = generateCrudRoutes({
 
 ## 🧰 Helpers
 
-| Helper                                                | Description                                      |
-| --------------------------------------                | ------------------------------------------------ |
-| `filterHelper(req.query, keys, model)`                | Builds MongoDB filters dynamically               |
-| `paginationHelper(req.query)`                         | Handles pagination & sorting                     |
-| `sendResponse({req, res, status, payload, logger})`   | Standardized API response structure              |
-| `ApiError`                                            | Custom error class                               |
-| `partialFilterMiddlewares(keys)`                      | Enables partial search on selected string fields |
+| Helper                                              | Description                                      |
+| --------------------------------------------------- | ------------------------------------------------ |
+| `filterHelper(req.query, keys, model)`              | Builds MongoDB filters dynamically               |
+| `paginationHelper(req.query)`                       | Handles pagination & sorting                     |
+| `sendResponse({req, res, status, payload, logger})` | Standardized API response structure              |
+| `ApiError`                                          | Custom error class                               |
+| `partialFilterMiddlewares(keys)`                    | Enables partial search on selected string fields |
 
 Example:
 
@@ -326,6 +327,7 @@ generateCrudRoutes({
 ## 🔐 Security Practices
 
 XMCRUD includes:
+
 - Centralized ApiError handler
 - Optional Redis caching layer isolation
 - Disabled auto-routes via notFoundMiddleware
@@ -375,4 +377,3 @@ MIT © [Suronjit Pal](https://github.com/suronjit797)
 >
 > and start coding instantly!
 ````
-

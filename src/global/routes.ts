@@ -15,6 +15,17 @@ type curdMiddlewares = {
   removeManyPost?: RequestHandler[];
 };
 
+export interface IOptions<T> {
+  mongooseModel: Model<T>;
+  name: string;
+  basePath?: string;
+  middlewares?: curdMiddlewares;
+  ioredis?: ioredisType;
+  cachedTime?: number;
+  logger?: Logger;
+  protectedFields?: string[];
+}
+
 export const generateCrudRoutes = <T>({
   mongooseModel,
   name,
@@ -23,16 +34,9 @@ export const generateCrudRoutes = <T>({
   ioredis,
   cachedTime,
   logger,
-}: {
-  mongooseModel: Model<T>;
-  name: string;
-  basePath?: string;
-  middlewares?: curdMiddlewares;
-  ioredis?: ioredisType;
-  cachedTime?: number;
-  logger?: Logger;
-}): Router => {
-  const controller = generateCrudController(mongooseModel, name, ioredis, cachedTime, logger);
+  protectedFields,
+}: IOptions<T>): Router => {
+  const controller = generateCrudController({ model: mongooseModel, name, ioredis, cachedTime, logger, protectedFields });
   const router = express.Router();
 
   router.get(`${basePath}/`, ...(middlewares.getAll || []), controller.getAll);
