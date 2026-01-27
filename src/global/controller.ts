@@ -39,7 +39,7 @@ const globalController = <TType>(
         if (ioredis) await delIoredisCache(ioredis, name);
 
         const data = await ModelName.create(req.body);
-        sendResponse(res, 201, { success: true, message: `${name} created successfully`, data }, logger);
+        sendResponse({ req, res, status: 201, payload: { success: true, message: `${name} created successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
@@ -83,7 +83,13 @@ const globalController = <TType>(
           }
         }
 
-        sendResponse(res, 200, { success: true, message: `${name}s fetched successfully`, data: values.data, meta: values.meta }, logger);
+        sendResponse({
+          req,
+          res,
+          status: 200,
+          payload: { success: true, message: `${name}s fetched successfully`, data: values.data, meta: values.meta },
+          logger,
+        });
       } catch (error) {
         handleError(error, next, logger, name);
       }
@@ -115,7 +121,7 @@ const globalController = <TType>(
           }
         }
 
-        sendResponse(res, 200, { success: true, message: `${name} fetched successfully`, data }, logger);
+        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} fetched successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
@@ -136,7 +142,7 @@ const globalController = <TType>(
           throw new ApiError(500, "Server Error");
         }
 
-        sendResponse(res, 200, { success: true, message: `${name} updated successfully`, data }, logger);
+        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} updated successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
@@ -156,7 +162,7 @@ const globalController = <TType>(
         }
         const data = await ModelName.find(filter);
 
-        sendResponse(res, 200, { success: true, message: `${name}s updated successfully`, data }, logger);
+        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name}s updated successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
@@ -170,7 +176,7 @@ const globalController = <TType>(
 
         const data = await ModelName.findByIdAndDelete(req.params.id);
 
-        sendResponse(res, 200, { success: true, message: `${name} deleted successfully`, data }, logger);
+        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} deleted successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
@@ -184,7 +190,7 @@ const globalController = <TType>(
         const filter = filterHelper(req.query, req.partialFilter || [], new ModelName());
         const data = await ModelName.deleteMany(filter);
 
-        sendResponse(res, 200, { success: true, message: `${name}s deleted successfully`, data }, logger);
+        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name}s deleted successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
@@ -196,7 +202,7 @@ const globalController = <TType>(
         const filter = filterHelper(req.body, req.partialFilter || [], new ModelName());
         const data = await ModelName.deleteMany(filter);
 
-        sendResponse(res, 200, { success: true, message: `${name}s deleted successfully`, data }, logger);
+        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name}s deleted successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }

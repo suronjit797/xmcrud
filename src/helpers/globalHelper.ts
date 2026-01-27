@@ -6,6 +6,14 @@ export interface Logger {
   successLogger: (message: string, meta?: Record<string, any>) => void;
 }
 
+export interface SendResponseParams<T> {
+  res: Response;
+  req: Request;
+  status: number;
+  payload: TPayload<T>;
+  logger?: Logger;
+}
+
 // api error for send error with message and status
 export class ApiError extends Error {
   statusCode: number;
@@ -23,7 +31,7 @@ export class ApiError extends Error {
 }
 
 // response formate
-export const sendResponse = <T>(res: Response, status: number, payload: TPayload<T>, logger?: Logger) => {
+export const sendResponse = <T>({ res, req, status, payload, logger }: SendResponseParams<T>) => {
   const { success, message, data, meta } = payload;
   const response: TPayload<T> = { success, message };
 
@@ -31,7 +39,9 @@ export const sendResponse = <T>(res: Response, status: number, payload: TPayload
   if (data !== undefined) response.data = data;
 
   if (logger?.successLogger) {
-    logger.successLogger(`[${status}] ${message}`, { dataId: typeof data === "object" ? (data as Record<string, any>)?._id : null });
+    logger.successLogger(`[${status}] ${message}`, {
+      dataId: typeof data === "object" ? (data as Record<string, any>)?._id : null,
+    });
   }
 
   return res.status(status).json(response);

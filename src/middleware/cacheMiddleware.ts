@@ -3,7 +3,7 @@ import redisGenerateCacheKey from "../helpers/redisCacheKeyGenerator";
 import ioredis from "ioredis";
 import { sendResponse } from "../helpers/globalHelper";
 
-const cacheMiddleware = (redis:ioredis) => async (req: Request, res: Response, next: NextFunction) => {
+const cacheMiddleware = (redis: ioredis) => async (req: Request, res: Response, next: NextFunction) => {
   try {
     const method = req.method.toUpperCase();
     const baseUrl = req.baseUrl.toLowerCase(); // e.g., /api/v1/user
@@ -13,7 +13,8 @@ const cacheMiddleware = (redis:ioredis) => async (req: Request, res: Response, n
       const cacheKey = redisGenerateCacheKey(req);
       const cachedData = await redis.get(cacheKey);
 
-      if (cachedData) {        const parsed = JSON.parse(cachedData);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
         const isSingle = req.params?.id !== undefined;
 
         const payload = isSingle
@@ -29,7 +30,7 @@ const cacheMiddleware = (redis:ioredis) => async (req: Request, res: Response, n
               meta: parsed?.meta,
             };
 
-        return sendResponse(res, 200, payload);
+        return sendResponse({ res, req, status: 200, payload });
       }
       return next(); // Cache miss → go to controller
     }
@@ -44,7 +45,7 @@ const cacheMiddleware = (redis:ioredis) => async (req: Request, res: Response, n
 
     return next();
   } catch (error) {
-    return next(error); 
+    return next(error);
   }
 };
 

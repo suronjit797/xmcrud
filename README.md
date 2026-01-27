@@ -220,13 +220,13 @@ const userRouter = generateCrudRoutes({
 
 ## 🧰 Helpers
 
-| Helper                                 | Description                                      |
-| -------------------------------------- | ------------------------------------------------ |
-| `filterHelper(req.query, keys, model)` | Builds MongoDB filters dynamically               |
-| `paginationHelper(req.query)`          | Handles pagination & sorting                     |
-| `sendResponse(res, status, payload)`   | Standardized API response structure              |
-| `ApiError`                             | Custom error class                               |
-| `partialFilterMiddlewares(keys)`       | Enables partial search on selected string fields |
+| Helper                                                | Description                                      |
+| --------------------------------------                | ------------------------------------------------ |
+| `filterHelper(req.query, keys, model)`                | Builds MongoDB filters dynamically               |
+| `paginationHelper(req.query)`                         | Handles pagination & sorting                     |
+| `sendResponse({req, res, status, payload, logger})`   | Standardized API response structure              |
+| `ApiError`                                            | Custom error class                               |
+| `partialFilterMiddlewares(keys)`                      | Enables partial search on selected string fields |
 
 Example:
 
