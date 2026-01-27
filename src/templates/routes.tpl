@@ -2,23 +2,27 @@ import { generateCrudRoutes, partialFilterMiddlewares, notFoundMiddleware } from
 import {{ModelName}}Model from "./{{name}}.model";
 import { Router } from "express"
 
+// partialFilterItems:    only key from model (type: string)
+// name:                  name must be same as path name for caching functionality 
+// ioredis:               Redis are optional if need redis caching
+// middlewares:           middlewares are optional for each auto generated routes
+// notFoundMiddleware:    notFoundMiddleware for disabled access to end user
 
-const partialFilterItems = [""]; // only key from model (type: string)
-
+const partialFilterItems = [""];
 const {{name}}Router = Router()
 
 const curdRouter =  generateCrudRoutes({
   mongooseModel: {{ModelName}}Model,
-  name: "{{name}}",    //! name same as route name
-  // ioredis: redis,  // optional if has redis in app
+  name: "{{name}}",
+  // ioredis: redis,
   middlewares: {
     getAll: [partialFilterMiddlewares(partialFilterItems)],
-    // getSingle: [],  // middlewares are optional
-    // create: [],  // middlewares are optional
-    // update: [],  // middlewares are optional
-    // remove: [],  // middlewares are optional
-    // updateMany: [notFoundMiddleware],  // middlewares are optional  //notFoundMiddleware for disabled access to end user
-    // removeMany: [notFoundMiddleware],  // middlewares are optional  //notFoundMiddleware for disabled access to end user
+    updateMany: [notFoundMiddleware],
+    removeMany: [notFoundMiddleware],
+    // create: [],
+    // update: [],
+    // remove: [],
+    // getSingle: [],
   },
 });
 
