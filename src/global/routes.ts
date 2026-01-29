@@ -1,6 +1,6 @@
 import express, { type Router as ExpressRouter } from "express";
-import { IGenerateCrudRoutes } from "../interface/globalInterface";
 import generateCrudController from "./controller"; // path to your globalController
+import { IGenerateCrudRoutes } from "../Types";
 
 export const generateCrudRoutes = <T>({
   mongooseModel,

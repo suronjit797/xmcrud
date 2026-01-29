@@ -43,6 +43,23 @@ export const pic = <T extends Record<string, any>>(obj: T, schemaFields: string[
   }, {});
 };
 
+/*######################## normalize sort order ####################################*/
+export const normalizeSortOrder = (value: unknown): 1 | -1 => {
+  // Map of string values to sort orders
+  const stringMap: Record<string, 1 | -1> = { "1": 1, "-1": -1, asc: 1, ascending: 1, desc: -1, descending: -1 };
+
+  if (typeof value === "string") {
+    const normalized = stringMap[value.toLowerCase()];
+    if (normalized) return normalized;
+  }
+
+  if (typeof value === "number") {
+    if (value === 1 || value === -1) return value;
+  }
+
+  return -1;
+};
+
 /*######################## Pagination helpers ####################################*/
 export const paginationHelper = (obj: RecordUnknown): IPagination => {
   const {
@@ -67,9 +84,10 @@ export const paginationHelper = (obj: RecordUnknown): IPagination => {
   const MAX_SKIP = 1_000_000;
   const skip = Math.min((parsedPage - 1) * parsedLimit, MAX_SKIP);
 
-  const validSortOrders: SortOrder[] = [1, -1, "asc", "ascending", "desc", "descending"];
-  const parsedSortOrder: SortOrder = validSortOrders.includes(sortOrder) ? sortOrder : "desc";
+  // const validSortOrders: SortOrder[] = [1, -1, "asc", "ascending", "desc", "descending"];
+  // const parsedSortOrder: SortOrder = validSortOrders.includes(sortOrder) ? sortOrder : "desc";
 
+  let parsedSortOrder: SortOrder = normalizeSortOrder(sortOrder);
   const sortCondition: ISortCondition = { [sortBy]: parsedSortOrder };
 
   // need to test for populate

@@ -3,8 +3,7 @@ import { Types } from "mongoose";
 import { ApiError, handleError, sendResponse } from "../helpers/globalHelper";
 import { filterHelper, paginationHelper } from "../helpers/queryHelper";
 import redisGenerateCacheKey from "../helpers/redisCacheKeyGenerator";
-import { IMeta } from "../Types";
-import { GlobalControllerOptions, GlobalControllerReturn } from "../interface/globalInterface";
+import { GlobalControllerOptions, GlobalControllerReturn, IMeta } from "../Types";
 
 const { ObjectId } = Types;
 const defaultProtectedFields = ["_id", "createdAt", "updatedAt", "__v"];
