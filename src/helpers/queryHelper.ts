@@ -1,4 +1,4 @@
-import { Document, SortOrder, Types } from "mongoose";
+import { Document, Schema, SortOrder, Types } from "mongoose";
 import { IPagination, ISortCondition, RecordUnknown, TFilter } from "../Types";
 import dayjs from "dayjs";
 import { ApiError } from "./globalHelper";
@@ -108,18 +108,14 @@ export const paginationHelper = (obj: RecordUnknown): IPagination => {
 };
 
 /*######################## Filter Helper ####################################*/
-export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearching: string[], schemaName: Document): Partial<TFilter> => {
+export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearching: string[], schema: Schema): Partial<TFilter> => {
   const query = { ...reqQuery };
-  const schemaKeys = Object.keys(schemaName?.schema?.paths);
+  const schemaKeys = Object.keys(schema?.paths);
   const schemaKeyWithTypes: Record<string, string> = {};
   const conditions: RecordUnknown[] = [];
   const acceptedFilterTypes = ["String", "Number", "Boolean", "Date", "ObjectId"];
 
-  // Object.entries(schemaName?.schema?.paths)?.forEach(([key, value]) => {
-  //   if (acceptedFilterTypes.includes(value?.instance)) schemaKeyWithTypes[key] = value?.instance;
-  // });
-
-  Object.entries(schemaName?.schema?.paths || {}).forEach(([key, value]: [string, any]) => {
+  Object.entries(schema?.paths || {}).forEach(([key, value]: [string, any]) => {
     let instance = value?.instance;
 
     // If it's an Array, check the caster type

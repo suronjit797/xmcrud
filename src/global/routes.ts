@@ -1,30 +1,6 @@
-import express, { RequestHandler, Router } from "express";
+import express, { type Router as ExpressRouter } from "express";
+import { IGenerateCrudRoutes } from "../interface/globalInterface";
 import generateCrudController from "./controller"; // path to your globalController
-import { Model } from "mongoose";
-import type ioredisType from "ioredis";
-import { Logger } from "../helpers/globalHelper";
-
-type curdMiddlewares = {
-  create?: RequestHandler[];
-  getAll?: RequestHandler[];
-  getSingle?: RequestHandler[];
-  update?: RequestHandler[];
-  updateMany?: RequestHandler[];
-  remove?: RequestHandler[];
-  removeMany?: RequestHandler[];
-  removeManyPost?: RequestHandler[];
-};
-
-export interface IOptions<T> {
-  mongooseModel: Model<T>;
-  name: string;
-  basePath?: string;
-  middlewares?: curdMiddlewares;
-  ioredis?: ioredisType;
-  cachedTime?: number;
-  logger?: Logger;
-  protectedFields?: string[];
-}
 
 export const generateCrudRoutes = <T>({
   mongooseModel,
@@ -35,8 +11,9 @@ export const generateCrudRoutes = <T>({
   cachedTime,
   logger,
   protectedFields,
-}: IOptions<T>): Router => {
-  const controller = generateCrudController({ model: mongooseModel, name, ioredis, cachedTime, logger, protectedFields });
+  invalidateCache,
+}: IGenerateCrudRoutes<T>): ExpressRouter => {
+  const controller = generateCrudController({ mongooseModel, name, ioredis, cachedTime, logger, protectedFields, invalidateCache });
   const router = express.Router();
 
   router.get(`${basePath}/`, ...(middlewares.getAll || []), controller.getAll);

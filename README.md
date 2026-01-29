@@ -223,7 +223,7 @@ const userRouter = generateCrudRoutes({
 
 | Helper                                              | Description                                      |
 | --------------------------------------------------- | ------------------------------------------------ |
-| `filterHelper(req.query, keys, model)`              | Builds MongoDB filters dynamically               |
+| `filterHelper(req.query, keys, model.schema)`       | Builds MongoDB filters dynamically               |
 | `paginationHelper(req.query)`                       | Handles pagination & sorting                     |
 | `sendResponse({req, res, status, payload, logger})` | Standardized API response structure              |
 | `ApiError`                                          | Custom error class                               |
@@ -233,7 +233,7 @@ Example:
 
 ```ts
 const pagination = paginationHelper(req.query);
-const filter = filterHelper(req.query, ["name", "email"], new UserModel());
+const filter = filterHelper(req.query, ["name", "email"], UserModel.schema);
 ```
 
 ---
