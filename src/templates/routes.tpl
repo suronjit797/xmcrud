@@ -15,6 +15,7 @@ const curdRouter =  generateCrudRoutes({
   mongooseModel: {{ModelName}}Model,
   name: "{{name}}",
   // ioredis: redis,
+  // invalidateCache: []
   middlewares: {
     getAll: [partialFilterMiddlewares(partialFilterItems)],
     updateMany: [notFoundMiddleware],

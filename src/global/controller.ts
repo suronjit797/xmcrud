@@ -8,17 +8,36 @@ import { GlobalControllerOptions, GlobalControllerReturn, IMeta } from "../Types
 const { ObjectId } = Types;
 const defaultProtectedFields = ["_id", "createdAt", "updatedAt", "__v"];
 
-const delIoredisCache = async (ioredis: ioredisType, name: string, invalidateCache: string[] = []): Promise<void> => {
-  if (!ioredis) return;
+// const delIoredisCache = async (ioredis: ioredisType, name: string, invalidateCache: string[] = []): Promise<void> => {
+//   if (!ioredis) return;
 
-  // Build all cache patterns: single name + extra invalidations
-  const patterns = [`*api:*:${name}*`.toLowerCase(), ...invalidateCache.map((c) => `*api:*:${c}*`.toLowerCase())];
+//   // Build all cache patterns: single name + extra invalidations
+//   const patterns = [`*${name}*`.toLowerCase(), ...invalidateCache.map((c) => `*${c}*`)];
+
+//   for (const pattern of patterns) {
+//     const keys = await ioredis.keys(pattern);
+//     if (keys.length > 0) {
+//       // const unlinkCount = await ioredis.call("DEL", ...keys);
+//       const unlinkCount = await ioredis.del(...keys);
+
+//       console.log({ keys, pattern, unlinkCount, name, invalidateCache });
+//     }
+//   }
+// };
+
+const delIoredisCache = async (redis: ioredisType, name: string, invalidateCache: string[] = []) => {
+  if (!redis) return;
+
+  const prefix = (redis as any)?.options?.keyPrefix ?? "";
+  const patterns = [`*${name}*`, ...invalidateCache.map((c) => `*${c}*`)];
 
   for (const pattern of patterns) {
-    const keys = await ioredis.keys(pattern);
-    if (keys.length > 0) {
-      await ioredis.call("DEL", ...keys);
-    }
+    const keys = await redis.keys(pattern);
+
+    if (!keys.length) continue;
+    const normalizedKeys = prefix ? keys.map((k) => (k.startsWith(prefix) ? k.slice(prefix.length) : k)) : keys;
+    const deleted = await redis.del(...normalizedKeys);
+    // console.log({ pattern, keys, normalizedKeys, deleted, prefix });
   }
 };
 
