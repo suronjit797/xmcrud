@@ -8,23 +8,6 @@ import { GlobalControllerOptions, GlobalControllerReturn, IMeta } from "../Types
 const { ObjectId } = Types;
 const defaultProtectedFields = ["_id", "createdAt", "updatedAt", "__v"];
 
-// const delIoredisCache = async (ioredis: ioredisType, name: string, invalidateCache: string[] = []): Promise<void> => {
-//   if (!ioredis) return;
-
-//   // Build all cache patterns: single name + extra invalidations
-//   const patterns = [`*${name}*`.toLowerCase(), ...invalidateCache.map((c) => `*${c}*`)];
-
-//   for (const pattern of patterns) {
-//     const keys = await ioredis.keys(pattern);
-//     if (keys.length > 0) {
-//       // const unlinkCount = await ioredis.call("DEL", ...keys);
-//       const unlinkCount = await ioredis.del(...keys);
-
-//       console.log({ keys, pattern, unlinkCount, name, invalidateCache });
-//     }
-//   }
-// };
-
 const delIoredisCache = async (redis: ioredisType, name: string, invalidateCache: string[] = []) => {
   if (!redis) return;
 
@@ -36,36 +19,10 @@ const delIoredisCache = async (redis: ioredisType, name: string, invalidateCache
 
     if (!keys.length) continue;
     const normalizedKeys = prefix ? keys.map((k) => (k.startsWith(prefix) ? k.slice(prefix.length) : k)) : keys;
-    const deleted = await redis.del(...normalizedKeys);
+    const deleted = await redis.unlink(...normalizedKeys);
     // console.log({ pattern, keys, normalizedKeys, deleted, prefix });
   }
 };
-
-// const delIoredisCache = async (ioredis: ioredisType, name: string): Promise<void> => {
-//   if (ioredis && name) {
-//     const cacheKey = `*api:*:${name}*`.toLowerCase();
-//     const keys = await ioredis.keys(cacheKey);
-//     if (keys.length > 0) await ioredis.call("DEL", ...keys);
-//   }
-// };
-
-// const globalController = <TType>(
-//   ModelName: Model<TType>,
-//   name: string,
-//   ioredis?: ioredisType,
-//   cachedTime: number = 600,
-//   logger?: Logger,
-//   protectedFields: string[] = [],
-// ): {
-//   create: RequestHandler;
-//   getAll: RequestHandler;
-//   getSingle: RequestHandler;
-//   update: RequestHandler;
-//   updateMany: RequestHandler;
-//   remove: RequestHandler;
-//   removeMany: RequestHandler;
-//   removeManyPost: RequestHandler;
-// } => {
 
 export const generateCrudController = <TType extends object>({
   mongooseModel,
@@ -111,14 +68,6 @@ export const generateCrudController = <TType extends object>({
           const filter = filterHelper(req.query, req.partialFilter || [], mongooseModel.schema);
 
           const { page, limit, skip, sortCondition, populate, select } = pagination;
-          // const data = (await ModelName.find(filter)
-          //   .limit(limit)
-          //   .skip(skip)
-          //   .sort(sortCondition)
-          //   .populate(populate || "")
-          //   .select(select || "")
-          //   .lean()) as TType[];
-          // const total = await ModelName.countDocuments(filter);
 
           const [data, total] = await Promise.all([
             mongooseModel

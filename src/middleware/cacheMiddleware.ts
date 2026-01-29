@@ -6,8 +6,8 @@ import { sendResponse } from "../helpers/globalHelper";
 const cacheMiddleware = (redis: ioredis) => async (req: Request, res: Response, next: NextFunction) => {
   try {
     const method = req.method.toUpperCase();
-    const baseUrl = req.baseUrl.toLowerCase(); // e.g., /api/v1/user
-    const cachePrefix = `*${baseUrl}*`; // used for deletion
+    const baseUrl = req.baseUrl.toLowerCase(); 
+    const cachePrefix = `*${baseUrl}*`;
 
     if (method === "GET") {
       const cacheKey = redisGenerateCacheKey(req);

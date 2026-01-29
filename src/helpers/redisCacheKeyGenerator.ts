@@ -17,7 +17,7 @@ export function redisGenerateCacheKey(req: Request): string {
     .map(([key, value]) => `${key}=${String(value)}`)
     .join("&");
 
-  let cacheKey = baseUrl || "root"; // fallback for routes like "/"
+  let cacheKey = baseUrl || "root"; 
 
   if (sortedParams) cacheKey += `:${sortedParams}`;
   if (sortedQuery) cacheKey += `?${sortedQuery}`;

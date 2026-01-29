@@ -65,8 +65,8 @@ export const paginationHelper = (obj: RecordUnknown): IPagination => {
   const {
     page = 1,
     limit = 10,
-    sortBy = "createdAt",
-    sortOrder = "desc",
+    sortBy,
+    sortOrder,
     populate = "",
     select = "",
   } = pic(obj, ["page", "limit", "sortBy", "sortOrder", "populate", "select"]) as {
@@ -84,11 +84,8 @@ export const paginationHelper = (obj: RecordUnknown): IPagination => {
   const MAX_SKIP = 1_000_000;
   const skip = Math.min((parsedPage - 1) * parsedLimit, MAX_SKIP);
 
-  // const validSortOrders: SortOrder[] = [1, -1, "asc", "ascending", "desc", "descending"];
-  // const parsedSortOrder: SortOrder = validSortOrders.includes(sortOrder) ? sortOrder : "desc";
-
   let parsedSortOrder: SortOrder = normalizeSortOrder(sortOrder);
-  const sortCondition: ISortCondition = { [sortBy]: parsedSortOrder };
+  const sortCondition: ISortCondition = { [sortBy || "createdAt"]: parsedSortOrder };
 
   // need to test for populate
   const parsePopulateString = (populateStr: string = ""): any => {
@@ -152,8 +149,6 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
       })),
     });
   }
-
-  // if (_id) conditions.push({ _id: new Types.ObjectId(_id) });
 
   // Handle multiple ids
   if (Array.isArray(ids) && ids?.length) conditions.push({ _id: { $in: ids?.map((id: string) => new Types.ObjectId(id)) } });
