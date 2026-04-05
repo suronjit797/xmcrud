@@ -3,6 +3,23 @@ import { Command } from "commander";
 import fs from "fs-extra";
 import path from "path";
 
+// check codebase is TS or JS
+function isTypeScriptProject(): boolean {
+  const tsconfigPath = path.join(process.cwd(), "tsconfig.json");
+  return fs.existsSync(tsconfigPath);
+}
+
+function hasTypeScriptDependency(): boolean {
+  const pkgPath = path.join(process.cwd(), "package.json");
+  if (!fs.existsSync(pkgPath)) return false;
+  const pkg = fs.readJsonSync(pkgPath);
+  return pkg.devDependencies?.typescript || pkg.dependencies?.typescript;
+}
+
+function isTS(): boolean {
+  return isTypeScriptProject() || hasTypeScriptDependency();
+}
+
 export function renderTemplate(raw: string, values: Record<string, string>): string {
   return Object.entries(values).reduce((acc, [key, val]) => acc.replace(new RegExp(`{{${key}}}`, "g"), val), raw);
 }
@@ -13,8 +30,17 @@ function capitalize(str: string): string {
 }
 
 // Template loader
-function loadTemplate(fileName: string, replacements: Record<string, string>): string {
-  const templatePath = path.join(__dirname, "templates", fileName);
+function loadTemplate(fileName: string, replacements: Record<string, string>, isTS: boolean = true): string | null {
+  const folder = isTS ? "ts" : "js";
+  console.log(`🚀 Codebase is in ${folder} format`);
+
+  const templatePath = path.join(__dirname, "templates", folder, fileName);
+
+  if (!fs.existsSync(templatePath)) {
+    console.warn(`⚠️ Template not found: ${fileName} (${folder})`);
+    return null;
+  }
+
   const raw = fs.readFileSync(templatePath, "utf-8");
   return renderTemplate(raw, replacements);
 }
@@ -31,14 +57,19 @@ program
     const folderPath = path.join(process.cwd(), "src", "app", name);
     fs.ensureDirSync(folderPath);
 
-    const templates: Record<string, string> = {
-      [`${name}.controller.ts`]: loadTemplate(`controller.tpl`, { name, ModelName }),
-      [`${name}.middleware.ts`]: loadTemplate(`middleware.tpl`, { name, ModelName }),
-      [`${name}.interface.ts`]: loadTemplate(`interface.tpl`, { name, ModelName }),
-      [`${name}.model.ts`]: loadTemplate(`model.tpl`, { name, ModelName }),
-      [`${name}.routes.ts`]: loadTemplate(`routes.tpl`, { name, ModelName }),
-      [`${name}.validation.ts`]: loadTemplate(`validation.tpl`, { name, ModelName }),
+    const useTS = isTS();
+    const ext = useTS ? "ts" : "js";
+
+    const templates: Record<string, string | null> = {
+      [`${name}.controller.${ext}`]: loadTemplate(`controller.tpl`, { name, ModelName }, useTS),
+      [`${name}.middleware.${ext}`]: loadTemplate(`middleware.tpl`, { name, ModelName }, useTS),
+      // [`${name}.interface.${ext}`]: loadTemplate(`interface.tpl`, { name, ModelName }, useTS),
+      [`${name}.model.${ext}`]: loadTemplate(`model.tpl`, { name, ModelName }, useTS),
+      [`${name}.routes.${ext}`]: loadTemplate(`routes.tpl`, { name, ModelName }, useTS),
+      [`${name}.validation.${ext}`]: loadTemplate(`validation.tpl`, { name, ModelName }, useTS),
     };
+
+    if (useTS) templates[`${name}.interface.ts`] = loadTemplate(`interface.ts.tpl`, { name, ModelName }, useTS);
 
     for (const [fileName, content] of Object.entries(templates)) {
       const filePath = path.join(folderPath, fileName);
@@ -46,8 +77,13 @@ program
         console.log(`⚠️ Skipped: ${fileName} already exists.`);
         continue;
       }
-      fs.writeFileSync(filePath, content);
-      console.log(`✅ Created: ${fileName}`);
+      // fs.writeFileSync(filePath, content);
+      if (content) {
+        fs.writeFileSync(filePath, content);
+        console.log(`✅ Created: ${fileName}`);
+      } else {
+        console.log(`⏭️ Skipped: ${fileName} (no template)`);
+      }
     }
 
     console.log(`🎉 CRUD module "${name}" setup complete at ${folderPath}`);
