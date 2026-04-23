@@ -47,7 +47,7 @@ export const generateCrudController = <TType extends object>({
           }
         }
 
-        if (!values.data.length) {
+        if (!values.data?.length) {
           const pagination = paginationHelper(req.query);
           const filter = filterHelper(req.query, req.partialFilter || [], mongooseModel.schema);
 
@@ -98,7 +98,7 @@ export const generateCrudController = <TType extends object>({
         }
 
         if (!data) {
-          if (!req.params.id && !ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
+          if (!req.params.id || !ObjectId.isValid(String(req.params.id))) throw new ApiError(400, "Invalid ID format");
           const { populate, select } = paginationHelper(req.query);
 
           data = (await mongooseModel
@@ -122,7 +122,7 @@ export const generateCrudController = <TType extends object>({
     update: async (req, res, next) => {
       try {
         if (ioredis) await delIoredisCache(ioredis, name, invalidateCache);
-        if (!req.params.id && !ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
+        if (!req.params.id || !ObjectId.isValid(String(req.params.id))) throw new ApiError(400, "Invalid ID format");
 
         const updateBody = { ...req.body };
         [...(protectedFields || []), ...defaultProtectedFields].forEach((field) => delete updateBody[field]);
@@ -156,7 +156,7 @@ export const generateCrudController = <TType extends object>({
     remove: async (req, res, next) => {
       try {
         if (ioredis) await delIoredisCache(ioredis, name, invalidateCache);
-        if (!req.params.id && !ObjectId.isValid(req.params.id)) throw new ApiError(400, "Invalid ID format");
+        if (!req.params.id || !ObjectId.isValid(String(req.params.id))) throw new ApiError(400, "Invalid ID format");
 
         const data = await mongooseModel.findByIdAndDelete(req.params.id);
 
