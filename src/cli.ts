@@ -30,10 +30,7 @@ function capitalize(str: string): string {
 }
 
 // Template loader
-function loadTemplate(fileName: string, replacements: Record<string, string>, isTS: boolean = true): string | null {
-  const folder = isTS ? "ts" : "js";
-  console.log(`🚀 Codebase is in ${folder} format`);
-
+function loadTemplate(fileName: string, replacements: Record<string, string>, folder: "ts" | "js"): string | null {
   const templatePath = path.join(__dirname, "templates", folder, fileName);
 
   if (!fs.existsSync(templatePath)) {
@@ -60,16 +57,18 @@ program
     const useTS = isTS();
     const ext = useTS ? "ts" : "js";
 
+    console.log(`🚀 Codebase is in ${ext} format`);
+
     const templates: Record<string, string | null> = {
-      [`${name}.controller.${ext}`]: loadTemplate(`controller.tpl`, { name, ModelName }, useTS),
-      [`${name}.middleware.${ext}`]: loadTemplate(`middleware.tpl`, { name, ModelName }, useTS),
-      // [`${name}.interface.${ext}`]: loadTemplate(`interface.tpl`, { name, ModelName }, useTS),
-      [`${name}.model.${ext}`]: loadTemplate(`model.tpl`, { name, ModelName }, useTS),
-      [`${name}.routes.${ext}`]: loadTemplate(`routes.tpl`, { name, ModelName }, useTS),
-      [`${name}.validation.${ext}`]: loadTemplate(`validation.tpl`, { name, ModelName }, useTS),
+      [`${name}.controller.${ext}`]: loadTemplate(`controller.tpl`, { name, ModelName }, ext),
+      [`${name}.middleware.${ext}`]: loadTemplate(`middleware.tpl`, { name, ModelName }, ext),
+      // [`${name}.interface.${ext}`]: loadTemplate(`interface.tpl`, { name, ModelName }, ext),
+      [`${name}.model.${ext}`]: loadTemplate(`model.tpl`, { name, ModelName }, ext),
+      [`${name}.routes.${ext}`]: loadTemplate(`routes.tpl`, { name, ModelName }, ext),
+      [`${name}.validation.${ext}`]: loadTemplate(`validation.tpl`, { name, ModelName }, ext),
     };
 
-    if (useTS) templates[`${name}.interface.ts`] = loadTemplate(`interface.ts.tpl`, { name, ModelName }, useTS);
+    if (useTS) templates[`${name}.interface.ts`] = loadTemplate(`interface.ts.tpl`, { name, ModelName }, ext);
 
     for (const [fileName, content] of Object.entries(templates)) {
       const filePath = path.join(folderPath, fileName);

@@ -1,6 +1,6 @@
-import { Document, Schema, SortOrder, Types } from "mongoose";
-import { IPagination, ISortCondition, RecordUnknown, TFilter } from "../Types";
 import dayjs from "dayjs";
+import { Schema, SortOrder, Types } from "mongoose";
+import { IPagination, ISortCondition, RecordUnknown, TFilter } from "../Types";
 import { ApiError } from "./globalHelper";
 
 // Supported operators for query
@@ -211,10 +211,10 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
       const isArray = typeof raw === "string" && raw.includes(",");
       const val = isArray
         ? {
-            $in: toArray(raw)
-              .map((item) => castValueByType(item, fieldType))
-              .filter((v) => v !== undefined),
-          }
+          $in: toArray(raw)
+            .map((item) => castValueByType(item, fieldType))
+            .filter((v) => v !== undefined),
+        }
         : castValueByType(raw, fieldType);
 
       conditions.push({ [key]: val });
