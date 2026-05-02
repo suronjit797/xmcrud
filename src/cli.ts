@@ -68,7 +68,7 @@ program
       [`${name}.validation.${ext}`]: loadTemplate(`validation.tpl`, { name, ModelName }, ext),
     };
 
-    if (useTS) templates[`${name}.interface.ts`] = loadTemplate(`interface.ts.tpl`, { name, ModelName }, ext);
+    if (useTS) templates[`${name}.interface.ts`] = loadTemplate(`interface.tpl`, { name, ModelName }, ext);
 
     for (const [fileName, content] of Object.entries(templates)) {
       const filePath = path.join(folderPath, fileName);
