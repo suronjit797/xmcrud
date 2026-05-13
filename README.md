@@ -122,6 +122,7 @@ generateCrudController({model:  mongoose model,
   cachedTime: number = 600,
   logger?: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
   protectedFields: []
+  paginationConfig:{maxLimit: 100, maxSkip: 100000}
   }) 
 
 */

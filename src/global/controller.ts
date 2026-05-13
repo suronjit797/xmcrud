@@ -1,4 +1,3 @@
-
 import { Types } from "mongoose";
 import { ApiError, handleError, sendResponse } from "../helpers/globalHelper";
 import { filterHelper, paginationHelper } from "../helpers/queryHelper";
@@ -16,6 +15,7 @@ export const generateCrudController = <TType extends object>({
   logger,
   protectedFields = [],
   invalidateCache = [],
+  paginationConfig = {},
 }: GlobalControllerOptions<TType>): GlobalControllerReturn => {
   return {
     // create
@@ -48,7 +48,7 @@ export const generateCrudController = <TType extends object>({
         }
 
         if (!values.data?.length) {
-          const pagination = paginationHelper(req.query);
+          const pagination = paginationHelper(req.query, paginationConfig);
           const filter = filterHelper(req.query, req.partialFilter || [], mongooseModel.schema);
 
           const { page, limit, skip, sortCondition, populate, select } = pagination;

@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { Schema, SortOrder, Types } from "mongoose";
-import { IPagination, ISortCondition, RecordUnknown, TFilter } from "../Types";
+import { IPagination, ISortCondition, PaginationConfig, RecordUnknown, TFilter } from "../Types";
 import { ApiError } from "./globalHelper";
 
 // Supported operators for query
@@ -61,7 +61,7 @@ export const normalizeSortOrder = (value: unknown): 1 | -1 => {
 };
 
 /*######################## Pagination helpers ####################################*/
-export const paginationHelper = (obj: RecordUnknown): IPagination => {
+export const paginationHelper = (obj: RecordUnknown, config: PaginationConfig = {}): IPagination => {
   const {
     page = 1,
     limit = 10,
@@ -78,11 +78,12 @@ export const paginationHelper = (obj: RecordUnknown): IPagination => {
     select?: string;
   };
 
-  const parsedPage = Math.abs(Number(page)) || 1;
-  const parsedLimit = Math.min(Math.abs(Number(limit || 10)), 100);
+  const { maxLimit = 100, maxSkip = 1_000_000 } = config || {};
 
-  const MAX_SKIP = 1_000_000;
-  const skip = Math.min((parsedPage - 1) * parsedLimit, MAX_SKIP);
+  const parsedPage = Math.abs(Number(page)) || 1;
+  const parsedLimit = Math.min(Math.abs(Number(limit || 10)), maxLimit);
+
+  const skip = Math.min((parsedPage - 1) * parsedLimit, maxSkip);
 
   let parsedSortOrder: SortOrder = normalizeSortOrder(sortOrder);
   const sortCondition: ISortCondition = { [sortBy || "createdAt"]: parsedSortOrder };
@@ -211,10 +212,10 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
       const isArray = typeof raw === "string" && raw.includes(",");
       const val = isArray
         ? {
-          $in: toArray(raw)
-            .map((item) => castValueByType(item, fieldType))
-            .filter((v) => v !== undefined),
-        }
+            $in: toArray(raw)
+              .map((item) => castValueByType(item, fieldType))
+              .filter((v) => v !== undefined),
+          }
         : castValueByType(raw, fieldType);
 
       conditions.push({ [key]: val });

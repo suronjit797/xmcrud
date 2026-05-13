@@ -1,3 +1,4 @@
+import { PaginationConfig } from "./index.d";
 import { RequestHandler } from "express";
 import type ioredisType from "ioredis";
 import { Model, SortOrder } from "mongoose";
@@ -37,6 +38,11 @@ export type IPagination = {
   select?: string;
 };
 
+export type PaginationConfig = {
+  maxLimit?: number;
+  maxSkip?: number;
+};
+
 export type TFilter = { [key: string]: object };
 
 export type RecordUnknown = Record<string, unknown>;
@@ -49,6 +55,7 @@ export interface GlobalControllerOptions<TType> {
   logger?: Logger;
   protectedFields?: readonly string[];
   invalidateCache?: string[];
+  paginationConfig?: PaginationConfig;
 }
 
 export interface GlobalControllerReturn {
@@ -77,4 +84,5 @@ export type curdMiddlewares = {
 export interface IGenerateCrudRoutes<T> extends GlobalControllerOptions<T> {
   basePath?: string;
   middlewares?: curdMiddlewares;
+  paginationConfig?: PaginationConfig;
 }

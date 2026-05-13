@@ -12,8 +12,9 @@ export const generateCrudRoutes = <T>({
   logger,
   protectedFields,
   invalidateCache,
+  paginationConfig,
 }: IGenerateCrudRoutes<T>): ExpressRouter => {
-  const controller = generateCrudController({ mongooseModel, name, ioredis, cachedTime, logger, protectedFields, invalidateCache });
+  const controller = generateCrudController({ mongooseModel, name, ioredis, cachedTime, logger, protectedFields, invalidateCache, paginationConfig });
   const router = express.Router();
 
   router.get(`${basePath}/`, ...(middlewares.getAll || []), controller.getAll);
