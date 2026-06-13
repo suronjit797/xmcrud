@@ -22,6 +22,8 @@ Generate a full CRUD module (model, controller, and router) instantly:
 npm install xmcrud
 # or
 yarn add xmcrud
+#or
+pnpm add xmcrud
 ```
 
 ```bash
@@ -115,7 +117,7 @@ const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 const userController = generateCrudController({ model: UserModel, name: "User" });
 
 /* 
-other options
+Other configuration options
 generateCrudController({model:  mongoose model,
   name: string,
   ioredis?: ioredisType,
@@ -182,7 +184,7 @@ This is useful when:
 - you want read-only API
 - you want custom logic instead of default auto CRUD
 
-````ts
+```ts
 import { generateCrudRoutes, notFoundMiddleware } from "xmcrud";
 
 const router = generateCrudRoutes({
@@ -194,6 +196,7 @@ const router = generateCrudRoutes({
     updateMany: [notFoundMiddleware],  // hide Update Many route
   },
 });
+```
 
 ---
 
@@ -216,7 +219,7 @@ const userRouter = generateCrudRoutes({
   logger: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
   protectedFields:[]  // for update
 });
-````
+```
 
 ---
 
@@ -333,7 +336,6 @@ XMCRUD includes:
 - Optional Redis caching layer isolation
 - Disabled auto-routes via notFoundMiddleware
 - Strict query parser to prevent NoSQL injection
-- Set `limit` maximum 100 value in pagination
 
 ### Recommended Security Checklist
 
@@ -344,6 +346,7 @@ XMCRUD includes:
 - Sanitize `_regex` queries
 - Use basic all validation for security in projects
 
+````
 ---
 
 <!-- ## 🤝 Contributing
@@ -355,7 +358,7 @@ If you have ideas for new features (CLI templates, Prisma support, etc.), please
 
 ## 📜 License
 
-MIT © [Suronjit Pal](https://github.com/suronjit797)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/suronjit797/xmcrud/blob/main/LICENSE)
 
 ---
 
@@ -377,4 +380,3 @@ MIT © [Suronjit Pal](https://github.com/suronjit797)
 > ```
 >
 > and start coding instantly!
-````
