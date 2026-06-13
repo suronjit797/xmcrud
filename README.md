@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/xmcrud.svg?style=flat&color=blue)](https://www.npmjs.com/package/xmcrud)
 [![downloads](https://img.shields.io/npm/dt/xmcrud.svg?color=green)](https://www.npmjs.com/package/xmcrud)
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/suronjit797/xmcrud/blob/main/LICENSE)
 [![YouTube](https://img.shields.io/badge/Watch_Tutorial-red?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=oPjdKeG4ppE)
 
 ---
@@ -192,8 +192,8 @@ const router = generateCrudRoutes({
   name: "User",
   basePath: "/users",
   middlewares: {
-    removeMany: [notFoundMiddleware],  // hide Delete Many route
-    updateMany: [notFoundMiddleware],  // hide Update Many route
+    removeMany: [notFoundMiddleware], // hide Delete Many route
+    updateMany: [notFoundMiddleware], // hide Update Many route
   },
 });
 ```
@@ -327,7 +327,7 @@ generateCrudRoutes({
 
 ## 🔐 Security improvement recommendations for your projects
 
-````md
+```md
 ## 🔐 Security Practices
 
 XMCRUD includes:
@@ -345,8 +345,8 @@ XMCRUD includes:
 - Disable routes you do not use
 - Sanitize `_regex` queries
 - Use basic all validation for security in projects
+```
 
-````
 ---
 
 <!-- ## 🤝 Contributing
@@ -364,10 +364,12 @@ If you have ideas for new features (CLI templates, Prisma support, etc.), please
 
 ## 🔗 Links
 
-- [GitHub Repository](https://github.com/suronjit797/xmcrud)
-- [Report Issues](https://github.com/suronjit797/xmcrud/issues)
-- [YouTube Tutorial](https://www.youtube.com/watch?v=oPjdKeG4ppE)
-- [NPM Package](https://www.npmjs.com/package/xmcrud)
+## 🔗 Links
+
+- 📦 **NPM Package:** [npmjs.com/package/xmcrud](https://www.npmjs.com/package/xmcrud)
+- 🖥️ **GitHub Repository:** [github.com/suronjit797/xmcrud](https://github.com/suronjit797/xmcrud)
+- 🪲 **Report Issues:** [github.com/suronjit797/xmcrud/issues](https://github.com/suronjit797/xmcrud/issues)
+- 🎥 **YouTube Tutorial:** [Watch on YouTube](https://www.youtube.com/watch?v=oPjdKeG4ppE)
 
 ---
 
