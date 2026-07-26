@@ -135,7 +135,8 @@ export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearch
     let instance = value?.instance;
 
     // If it's an Array, check the caster type
-    if (instance === "Array" && value?.caster?.instance) instance = value.caster.instance;
+    // embeddedSchemaType
+    if (instance === "Array" && value?.embeddedSchemaType?.instance) instance = value.embeddedSchemaType?.instance;
 
     if (acceptedFilterTypes.includes(instance)) schemaKeyWithTypes[key] = instance;
   });

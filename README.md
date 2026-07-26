@@ -364,8 +364,6 @@ If you have ideas for new features (CLI templates, Prisma support, etc.), please
 
 ## 🔗 Links
 
-## 🔗 Links
-
 - 📦 **NPM Package:** [npmjs.com/package/xmcrud](https://www.npmjs.com/package/xmcrud)
 - 🖥️ **GitHub Repository:** [github.com/suronjit797/xmcrud](https://github.com/suronjit797/xmcrud)
 - 🪲 **Report Issues:** [github.com/suronjit797/xmcrud/issues](https://github.com/suronjit797/xmcrud/issues)
