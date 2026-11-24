@@ -13,7 +13,7 @@ function hasTypeScriptDependency(): boolean {
   const pkgPath = path.join(process.cwd(), "package.json");
   if (!fs.existsSync(pkgPath)) return false;
   const pkg = fs.readJsonSync(pkgPath);
-  return pkg.devDependencies?.typescript || pkg.dependencies?.typescript;
+  return Boolean(pkg.devDependencies?.typescript || pkg.dependencies?.typescript);
 }
 
 function isTS(): boolean {
@@ -42,14 +42,26 @@ function loadTemplate(fileName: string, replacements: Record<string, string>, fo
   return renderTemplate(raw, replacements);
 }
 
+// module names become file names and JS identifiers, so keep them to letters and digits
+const MODULE_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9]*$/;
+
 // main CLI program
 const program = new Command();
+const { version } = fs.readJsonSync(path.join(__dirname, "..", "package.json"), { throws: false }) || {};
+
+program.name("xmcrud").description("Generate Express + Mongoose CRUD modules").version(version || "0.0.0");
 
 // CLI command
 program
   .command("add <name>")
   .description("Create a full CRUD module")
   .action((name: string) => {
+    if (!MODULE_NAME_PATTERN.test(name)) {
+      console.error(`❌ Invalid module name "${name}". Use letters and digits only, starting with a letter (e.g. user, orderItem).`);
+      process.exitCode = 1;
+      return;
+    }
+
     const ModelName = capitalize(name);
     const folderPath = path.join(process.cwd(), "src", "app", name);
     fs.ensureDirSync(folderPath);
@@ -76,7 +88,6 @@ program
         console.log(`⚠️ Skipped: ${fileName} already exists.`);
         continue;
       }
-      // fs.writeFileSync(filePath, content);
       if (content) {
         fs.writeFileSync(filePath, content);
         console.log(`✅ Created: ${fileName}`);

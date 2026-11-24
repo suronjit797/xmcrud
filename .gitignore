@@ -14,3 +14,6 @@ note*
 
 /*.zip
 *copy*
+# keep build scripts even though they match the patterns above
+!scripts/
+!scripts/**

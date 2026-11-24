@@ -1,5 +1,5 @@
 import express, { type Router as ExpressRouter } from "express";
-import generateCrudController from "./controller"; // path to your globalController
+import generateCrudController from "./controller";
 import { IGenerateCrudRoutes } from "../Types";
 
 export const generateCrudRoutes = <T>({
@@ -16,18 +16,22 @@ export const generateCrudRoutes = <T>({
 }: IGenerateCrudRoutes<T>): ExpressRouter => {
   const controller = generateCrudController({ mongooseModel, name, ioredis, cachedTime, logger, protectedFields, invalidateCache, paginationConfig });
   const router = express.Router();
+  const path = basePath.replace(/\/+$/, "");
 
-  router.get(`${basePath}/`, ...(middlewares.getAll || []), controller.getAll);
-  router.post(`${basePath}/`, ...(middlewares.create || []), controller.create);
-  router.put(`${basePath}/update-many`, ...(middlewares.updateMany || []), controller.updateMany);
-  router.patch(`${basePath}/update-many`, ...(middlewares.updateMany || []), controller.updateMany);
-  router.delete(`${basePath}/delete-many`, ...(middlewares.removeMany || []), controller.removeMany);
-  router.post(`${basePath}/delete-many`, ...(middlewares.removeManyPost || []), controller.removeManyPost);
+  // POST /delete-many shares removeMany's middlewares unless set on its own, so disabling removeMany disables both
+  const removeManyPostMiddlewares = middlewares.removeManyPost ?? middlewares.removeMany ?? [];
 
-  router.get(`${basePath}/:id`, ...(middlewares.getSingle || []), controller.getSingle);
-  router.put(`${basePath}/:id`, ...(middlewares.update || []), controller.update);
-  router.patch(`${basePath}/:id`, ...(middlewares.update || []), controller.update);
-  router.delete(`${basePath}/:id`, ...(middlewares.remove || []), controller.remove);
+  router.get(`${path}/`, ...(middlewares.getAll || []), controller.getAll);
+  router.post(`${path}/`, ...(middlewares.create || []), controller.create);
+  router.put(`${path}/update-many`, ...(middlewares.updateMany || []), controller.updateMany);
+  router.patch(`${path}/update-many`, ...(middlewares.updateMany || []), controller.updateMany);
+  router.delete(`${path}/delete-many`, ...(middlewares.removeMany || []), controller.removeMany);
+  router.post(`${path}/delete-many`, ...removeManyPostMiddlewares, controller.removeManyPost);
+
+  router.get(`${path}/:id`, ...(middlewares.getSingle || []), controller.getSingle);
+  router.put(`${path}/:id`, ...(middlewares.update || []), controller.update);
+  router.patch(`${path}/:id`, ...(middlewares.update || []), controller.update);
+  router.delete(`${path}/:id`, ...(middlewares.remove || []), controller.remove);
 
   return router;
 };

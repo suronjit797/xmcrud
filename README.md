@@ -40,7 +40,7 @@ src/
         ├── user.interface.ts
         ├── user.controller.ts
         ├── user.middleware.ts
-        ├── user.route.ts
+        ├── user.routes.ts
         ├── user.validation.ts
 
 ```
@@ -114,17 +114,17 @@ import { generateCrudController } from "xmcrud";
 
 const UserModel = mongoose.model("User", new mongoose.Schema({ name: String }));
 
-const userController = generateCrudController({ model: UserModel, name: "User" });
+const userController = generateCrudController({ mongooseModel: UserModel, name: "users" });
 
 /* 
 Other configuration options
-generateCrudController({model:  mongoose model,
-  name: string,
+generateCrudController({mongooseModel:  mongoose model,
+  name: string,         // cache namespace (keep it unique per model)
   ioredis?: ioredisType,
   cachedTime: number = 600,
   logger?: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
   protectedFields: []
-  paginationConfig:{maxLimit: 100, maxSkip: 100000}
+  paginationConfig:{maxLimit: 100, maxSkip: 100000, allowedSelect?: string[], allowedPopulate?: string[]}
   }) 
 
 */
@@ -136,6 +136,8 @@ app.get("/users", userController.getAll);
 app.post("/users", userController.create);
 app.put("/users/:id", userController.update);
 app.delete("/users/:id", userController.remove);
+
+app.use(errorHandler); // optional: import { errorHandler } from "xmcrud"
 
 app.listen(3000, () => console.log("✅ Server running on port 3000"));
 ```
@@ -171,8 +173,13 @@ app.use("/api", crudRouter);
 | GET    | `/api/users/:id`         | Get user by ID        |
 | PUT    | `/api/users/:id`         | Update user by ID     |
 | DELETE | `/api/users/:id`         | Delete user by ID     |
-| PATCH  | `/api/users/update-many` | Update multiple users |
-| DELETE | `/api/users/delete-many` | Delete multiple users |
+| PATCH  | `/api/users/:id`         | Update user by ID     |
+| PUT    | `/api/users/update-many` | Update multiple users (filter from query) |
+| PATCH  | `/api/users/update-many` | Update multiple users (filter from query) |
+| DELETE | `/api/users/delete-many` | Delete multiple users (filter from query) |
+| POST   | `/api/users/delete-many` | Delete multiple users (filter from body)  |
+
+> Bulk routes (`update-many`, `delete-many`) reject a request whose filter is empty with `400`, so they can never touch the whole collection by accident.
 
 ### 🚫 Hiding specific auto-generated routes
 
@@ -192,7 +199,7 @@ const router = generateCrudRoutes({
   name: "User",
   basePath: "/users",
   middlewares: {
-    removeMany: [notFoundMiddleware], // hide Delete Many route
+    removeMany: [notFoundMiddleware], // hides both DELETE and POST /delete-many (set removeManyPost to control POST separately)
     updateMany: [notFoundMiddleware], // hide Update Many route
   },
 });
@@ -215,7 +222,8 @@ const userRouter = generateCrudRoutes({
   ioredis: redisClient,
   cachedTime: 600, // in seconds (default: 10 minutes)
   // optionals
-  middlewares:[],
+  invalidateCache: ["orders"], // also clear these modules' cache (their `name`) on every write
+  middlewares: {},
   logger: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
   protectedFields:[]  // for update
 });
@@ -232,6 +240,8 @@ const userRouter = generateCrudRoutes({
 | `sendResponse({req, res, status, payload, logger})` | Standardized API response structure              |
 | `ApiError`                                          | Custom error class                               |
 | `partialFilterMiddlewares(keys)`                    | Enables partial search on selected string fields |
+| `errorHandler`                                      | Express error middleware (ApiError, validation, cast, duplicate key) |
+| `stripProtectedFields(body, fields)`                | Removes protected fields from an update body, including `$set`/`$inc`/... |
 
 Example:
 
@@ -273,6 +283,7 @@ GET /users?select=name email age
 ```
 
 ✅ Returns only selected fields from MongoDB.
+🔒 `+field` (forcing fields with `select: false`, such as passwords) is always ignored. Restrict further with `paginationConfig.allowedSelect`.
 
 ---
 
@@ -282,7 +293,8 @@ GET /users?select=name email age
 GET /orders?populate=user product
 ```
 
-✅ Automatically populates given reference fields.
+✅ Automatically populates given reference fields. Nested paths work too: `populate=author author.company`.
+🔒 Without `paginationConfig.allowedPopulate` only paths that exist in the schema are populated.
 
 ---
 
@@ -297,8 +309,7 @@ GET /users?sortBy=createdAt&sortOrder=asc&page=2&limit=20
 | `sortBy`    | Sort by field                           |
 | `sortOrder` | "asc", "ascending", "desc", descending" |
 | `page`      | Page number (default: 1)                |
-| `limit`     | Documents per page (default: 10)        |
-| `skip`      | Skip documents manually                 |
+| `limit`     | Documents per page (default: 10, max: `maxLimit`) |
 
 ---
 
@@ -309,6 +320,8 @@ Supports full-text partial search:
 ```http
 GET /users?search=pal
 ```
+
+The search text is matched literally (regex characters are escaped). Use `?ids=id1,id2` to filter by several ids.
 
 You can enable search fields globally:
 
@@ -322,6 +335,24 @@ generateCrudRoutes({
   },
 });
 ```
+
+---
+
+## ⬆️ Upgrading to v2
+
+v2 fixes several security and data-safety issues. Most apps need no change; check these:
+
+- Node.js **20+** is required.
+- Bulk routes (`update-many`, `delete-many`) return `400` when the filter is empty or matches no known field.
+- `removeMany` middlewares now also guard `POST /delete-many` unless `removeManyPost` is set.
+- `?select=+field` is ignored; unknown `populate` paths are dropped (use `paginationConfig.allowedSelect` / `allowedPopulate` to control them).
+- Protected fields are stripped from `$set`, `$inc`, ... in updates, and from `update-many` bodies.
+- `DELETE /:id` returns `404` when the document does not exist; `update-many` returns `404` only when nothing matches.
+- Invalid ObjectIds in filters return `400`; `?limit=0` or invalid values fall back to the default limit.
+- Redis keys are now `xmcrud:<name>:...`; `name` is the cache namespace and `invalidateCache` takes other modules' `name`s. Old keys simply expire.
+- List messages no longer append `s` (e.g. `users fetched successfully`).
+
+See [version.md](version.md) for the full list.
 
 ---
 
@@ -355,6 +386,26 @@ Contributions are welcome!
 If you have ideas for new features (CLI templates, Prisma support, etc.), please open an issue or PR.
 
 --- -->
+
+## 🧪 Running tests
+
+Tests use Node's built-in test runner (no database or Redis needed: mongoose and ioredis are replaced by in-memory fakes in `test/support`).
+
+```bash
+yarn test          # run all tests
+yarn test:watch    # re-run on file changes
+yarn typecheck     # type-check src and tests
+```
+
+| File | Covers |
+| ---- | ------ |
+| `test/queryHelper.test.ts` | filters, operators, ids, search, pagination, select, populate |
+| `test/globalHelper.test.ts` | `stripProtectedFields`, `sendResponse`, `errorHandler` |
+| `test/redisCache.test.ts` | cache keys and invalidation (SCAN, keyPrefix) |
+| `test/crudRoutes.test.ts` | every generated route over HTTP, bulk-filter guard, middlewares, caching |
+| `test/cli.test.ts` | `xmcrud add` in throwaway projects |
+
+---
 
 ## 📜 License
 

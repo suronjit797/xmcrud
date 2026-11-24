@@ -3,15 +3,15 @@ import {{ModelName}}Model from "./{{name}}.model";
 import { Router } from "express"
 
 // partialFilterItems:    only key from model (type: string)
-// name:                  name must be same as path name for caching functionality 
+// name:                  cache namespace for this module (use it in other modules' invalidateCache)
 // ioredis:               Redis are optional if need redis caching
 // middlewares:           middlewares are optional for each auto generated routes
-// notFoundMiddleware:    notFoundMiddleware for disabled access to end user
+// notFoundMiddleware:    disables a route (removeMany also disables POST /delete-many)
 
-const partialFilterItems = [""];
+const partialFilterItems = []; // e.g. ["name", "email"]
 const {{name}}Router = Router()
 
-const curdRouter =  generateCrudRoutes({
+const crudRouter =  generateCrudRoutes({
   mongooseModel: {{ModelName}}Model,
   name: "{{name}}",
   // ioredis: redis,
@@ -37,6 +37,6 @@ const curdRouter =  generateCrudRoutes({
 
 
 // must be end of router 
-{{name}}Router.use(curdRouter)
+{{name}}Router.use(crudRouter)
 
 export default {{name}}Router;

@@ -1,15 +1,20 @@
-import { PaginationConfig } from "./index.d";
-import { RequestHandler } from "express";
+import type { RequestHandler } from "express";
 import type ioredisType from "ioredis";
-import { Model, SortOrder } from "mongoose";
+import type { Model, SortOrder } from "mongoose";
 import "express";
 
 declare global {
   namespace Express {
     interface Request {
-      partialFilter: string[];
+      partialFilter?: string[];
     }
   }
+}
+
+// logger
+export interface Logger {
+  errorLogger: (message: string, meta?: Record<string, any>) => void;
+  successLogger: (message: string, meta?: Record<string, any>) => void;
 }
 
 // response types
@@ -29,21 +34,29 @@ export type TPayload<T> = {
 // query types
 export type ISortCondition = { [key: string]: SortOrder };
 
+export type TPopulateOption = { path: string; populate?: TPopulateOption[] };
+
 export type IPagination = {
   page: number;
   limit: number;
   skip: number;
   sortCondition: ISortCondition;
-  populate?: string | Record<string>;
-  select?: string;
+  populate: TPopulateOption[];
+  select: string;
 };
 
 export type PaginationConfig = {
+  /** Maximum allowed `limit` (default: 100) */
   maxLimit?: number;
+  /** Maximum allowed skip (default: 1_000_000) */
   maxSkip?: number;
+  /** Fields clients may request with `?select=`. When omitted, any field except `+field` (forced hidden fields) is allowed. */
+  allowedSelect?: string[];
+  /** Paths clients may request with `?populate=` (e.g. ["author", "author.company"]). When omitted, only root paths that exist in the schema are allowed. */
+  allowedPopulate?: string[];
 };
 
-export type TFilter = { [key: string]: object };
+export type TFilter = { [key: string]: unknown };
 
 export type RecordUnknown = Record<string, unknown>;
 
@@ -70,7 +83,7 @@ export interface GlobalControllerReturn {
 }
 
 // routes
-export type curdMiddlewares = {
+export type CrudMiddlewares = {
   create?: RequestHandler[];
   getAll?: RequestHandler[];
   getSingle?: RequestHandler[];
@@ -78,11 +91,11 @@ export type curdMiddlewares = {
   updateMany?: RequestHandler[];
   remove?: RequestHandler[];
   removeMany?: RequestHandler[];
+  /** Middlewares for `POST /delete-many`. Falls back to `removeMany` when omitted. */
   removeManyPost?: RequestHandler[];
 };
 
 export interface IGenerateCrudRoutes<T> extends GlobalControllerOptions<T> {
   basePath?: string;
-  middlewares?: curdMiddlewares;
-  paginationConfig?: PaginationConfig;
+  middlewares?: CrudMiddlewares;
 }
