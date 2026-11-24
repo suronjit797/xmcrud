@@ -1,5 +1,5 @@
 import { ErrorRequestHandler, NextFunction, Request, RequestHandler, Response } from "express";
-import { Logger, TPayload } from "../Types";
+import { Logger, PartialFilterField, TPayload } from "../Types";
 
 export type { Logger };
 
@@ -44,12 +44,23 @@ export const sendResponse = <T>({ res, req, status, payload, logger }: SendRespo
   return res.status(status).json(response);
 };
 
+// fields for ?search=. Plain names work for any type (string, number, date, boolean, ObjectId);
+// use { path, refFields } to search a reference by the referenced documents' fields.
 export const partialFilterMiddlewares =
-  (keys: string[]): RequestHandler =>
+  (keys: PartialFilterField[]): RequestHandler =>
   (req, res, next) => {
-    req.partialFilter = keys.filter(Boolean);
+    // typed as string[] for 1.4.x compatibility; reference entries are objects at runtime
+    req.partialFilter = keys.filter((k) => (typeof k === "string" ? Boolean(k) : Boolean(k?.path))) as string[];
     next();
   };
+
+// Express 5 rebuilds req.query on every read, so middlewares that assign req.query.x lose the value.
+// Register this before such middlewares (app.use(writableQueryMiddleware)) to make req.query a plain, writable object.
+export const writableQueryMiddleware: RequestHandler = (req, res, next) => {
+  const query = { ...(req.query || {}) };
+  Object.defineProperty(req, "query", { value: query, writable: true, configurable: true, enumerable: true });
+  next();
+};
 
 export const handleError = (error: unknown, next: NextFunction, logger?: Logger, name?: string) => {
   if (logger?.errorLogger) {
@@ -80,9 +91,11 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
   let message = "Something went wrong";
   let errorMessages: { path: string; message: string }[] = [];
 
-  if (error instanceof ApiError) {
-    statusCode = error.statusCode;
-    message = error.message;
+  const errorStatus = Number(error?.statusCode ?? error?.status);
+  if (error instanceof ApiError || (Number.isInteger(errorStatus) && errorStatus >= 400 && errorStatus < 600 && error?.message)) {
+    // xmcrud ApiError, or any error that carries an HTTP status (your own ApiError class, http-errors, ...)
+    statusCode = error instanceof ApiError ? error.statusCode : errorStatus;
+    message = statusCode >= 500 && !(error instanceof ApiError) && !error?.isOperational && !error?.expose ? message : error.message;
     errorMessages = [{ path: "", message }];
   } else if (error?.name === "ValidationError" && error.errors) {
     statusCode = 400;

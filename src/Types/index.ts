@@ -6,10 +6,19 @@ import "express";
 declare global {
   namespace Express {
     interface Request {
-      partialFilter?: string[];
+      /**
+       * Fields used by `?search=` (set with partialFilterMiddlewares). Declared exactly as in 1.4.x so apps that
+       * declare it themselves still compile; { path, refFields } entries are stored here too at runtime.
+       */
+      partialFilter: string[];
+      /** Extra mongo filter AND-ed into every xmcrud query for this request (e.g. role scoping) */
+      scopeFilter?: Record<string, unknown>;
     }
   }
 }
+
+// partial search field: a path, or a reference path with the referenced fields to search in
+export type PartialFilterField = string | { path: string; refFields?: string[] };
 
 // logger
 export interface Logger {
@@ -48,6 +57,8 @@ export type IPagination = {
 export type PaginationConfig = {
   /** Maximum allowed `limit` (default: 100) */
   maxLimit?: number;
+  /** `?limit=0` returns every document, as in earlier versions (default: true). Set false to apply the default limit instead. */
+  allowNoLimit?: boolean;
   /** Maximum allowed skip (default: 1_000_000) */
   maxSkip?: number;
   /** Fields clients may request with `?select=`. When omitted, any field except `+field` (forced hidden fields) is allowed. */
@@ -56,7 +67,15 @@ export type PaginationConfig = {
   allowedPopulate?: string[];
 };
 
-export type TFilter = { [key: string]: unknown };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type TFilter = { [key: string]: any };
+
+export type FilterHelperOptions = {
+  /** Query keys to ignore (e.g. a key you build your own condition for) */
+  exclude?: string[];
+  /** Ready-made search condition (from buildSearchCondition). Replaces the built-in `search` handling; null means no search condition. */
+  searchCondition?: Record<string, unknown> | null;
+};
 
 export type RecordUnknown = Record<string, unknown>;
 
@@ -91,7 +110,7 @@ export type CrudMiddlewares = {
   updateMany?: RequestHandler[];
   remove?: RequestHandler[];
   removeMany?: RequestHandler[];
-  /** Middlewares for `POST /delete-many`. Falls back to `removeMany` when omitted. */
+  /** Middlewares for `POST /delete-many` (independent of removeMany). */
   removeManyPost?: RequestHandler[];
 };
 

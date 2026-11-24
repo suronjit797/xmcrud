@@ -1,5 +1,14 @@
-import { Schema, SortOrder, Types } from "mongoose";
-import { IPagination, ISortCondition, PaginationConfig, RecordUnknown, TFilter, TPopulateOption } from "../Types";
+import { Model, Schema, SortOrder, Types } from "mongoose";
+import {
+  FilterHelperOptions,
+  IPagination,
+  ISortCondition,
+  PaginationConfig,
+  PartialFilterField,
+  RecordUnknown,
+  TFilter,
+  TPopulateOption,
+} from "../Types";
 import { ApiError } from "./globalHelper";
 
 // Supported operators for query
@@ -17,6 +26,9 @@ const operatorsMap: Record<string, string> = {
 
 const MAX_IN_VALUES = 500;
 const MAX_REGEX_LENGTH = 200;
+const MAX_REF_SEARCH_IDS = 1000;
+// matches no document: used when a search cannot match any field
+const MATCH_NOTHING = { _id: { $in: [] as unknown[] } };
 
 export const paginationKeys = ["page", "limit", "sortBy", "sortOrder", "populate", "select"];
 
@@ -35,7 +47,18 @@ const firstString = (v: unknown): string | undefined => {
   return value === undefined || value === null ? undefined : String(value);
 };
 
-const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// earlier versions used the search text as a regex; keep that for valid patterns (apps may pre-escape it)
+// and fall back to a literal match when the text is not a valid regex (e.g. "(")
+const toSearchPattern = (text: string) => {
+  try {
+    new RegExp(text);
+    return text;
+  } catch {
+    return escapeRegex(text);
+  }
+};
 
 const splitList = (v: unknown): string[] =>
   (Array.isArray(v) ? v.join(",") : String(v ?? ""))
@@ -43,9 +66,11 @@ const splitList = (v: unknown): string[] =>
     .map((s) => s.trim())
     .filter(Boolean);
 
+const isObjectIdString = (value: string) => /^[a-f\d]{24}$/i.test(value);
+
 const toObjectId = (value: unknown, field: string): Types.ObjectId => {
   const str = String(value);
-  if (!/^[a-f\d]{24}$/i.test(str)) throw new ApiError(400, `Invalid ObjectId for "${field}"`);
+  if (!isObjectIdString(str)) throw new ApiError(400, `Invalid ObjectId for "${field}"`);
   return new Types.ObjectId(str);
 };
 
@@ -87,12 +112,14 @@ export const normalizeSortOrder = (value: unknown): 1 | -1 => {
 
 /*######################## populate / select parsers ####################################*/
 // "author author.company tags" -> [{ path: "author", populate: [{ path: "company" }] }, { path: "tags" }]
-const buildPopulateTree = (paths: string[]): TPopulateOption[] => {
+// a dotted path that is itself a schema path (e.g. "members.member" inside a subdocument array) stays one path
+const buildPopulateTree = (paths: string[], schema?: Schema): TPopulateOption[] => {
   const root: TPopulateOption[] = [];
 
   for (const fullPath of paths) {
+    const segments = schema?.path(fullPath) ? [fullPath] : fullPath.split(".").filter(Boolean);
     let level = root;
-    for (const segment of fullPath.split(".").filter(Boolean)) {
+    for (const segment of segments) {
       let node = level.find((n) => n.path === segment);
       if (!node) {
         node = { path: segment };
@@ -117,14 +144,14 @@ const parsePopulate = (value: unknown, config: PaginationConfig, schema?: Schema
     const allowed = config.allowedPopulate;
     paths = paths.filter((p) => allowed.includes(p));
   } else if (schema) {
-    // without an allowlist only populate root paths that the schema knows about
+    // without an allowlist only populate paths whose root the schema knows about
     paths = paths.filter((p) => {
       const rootPath = p.split(".")[0];
-      return Boolean(schema.path(rootPath)) || Boolean((schema as any).virtuals?.[rootPath]);
+      return Boolean(schema.path(p)) || Boolean(schema.path(rootPath)) || Boolean((schema as any).virtuals?.[rootPath]);
     });
   }
 
-  return buildPopulateTree(paths);
+  return buildPopulateTree(paths, schema);
 };
 
 const parseSelect = (value: unknown, config: PaginationConfig): string => {
@@ -143,19 +170,23 @@ const parseSelect = (value: unknown, config: PaginationConfig): string => {
   return fields.join(" ");
 };
 
-const toPositiveInt = (value: unknown, fallback: number): number => {
-  const num = Math.floor(Number(firstString(value)));
-  return Number.isFinite(num) && num > 0 ? num : fallback;
-};
+// absolute integer value like earlier versions (?limit=-5 -> 5); NaN when not a number
+const toAbsInt = (value: unknown): number => Math.floor(Math.abs(Number(firstString(value))));
 
 /*######################## Pagination helpers ####################################*/
 export const paginationHelper = (obj: RecordUnknown, config: PaginationConfig = {}, schema?: Schema): IPagination => {
-  const { page, limit, sortBy, sortOrder, populate, select } = pic(obj, paginationKeys);
+  const { page, limit, sortBy, sortOrder, populate, select } = pic(obj || {}, paginationKeys);
 
-  const { maxLimit = 100, maxSkip = 1_000_000 } = config || {};
+  const { maxLimit = 100, maxSkip = 1_000_000, allowNoLimit = true } = config || {};
 
-  const parsedPage = toPositiveInt(page, 1);
-  const parsedLimit = Math.min(toPositiveInt(limit, 10), maxLimit);
+  const pageNumber = toAbsInt(page);
+  const parsedPage = Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1;
+
+  // ?limit=0 means "no limit" in earlier versions (mongoose treats limit(0) as unlimited)
+  const limitNumber = limit === undefined || limit === "" ? 10 : toAbsInt(limit);
+  let parsedLimit: number;
+  if (limitNumber === 0) parsedLimit = allowNoLimit ? 0 : 10;
+  else parsedLimit = Number.isFinite(limitNumber) ? Math.min(limitNumber, maxLimit) : 10;
 
   const skip = Math.min((parsedPage - 1) * parsedLimit, maxSkip);
 
@@ -172,22 +203,147 @@ export const paginationHelper = (obj: RecordUnknown, config: PaginationConfig = 
   };
 };
 
-/*######################## Filter Helper ####################################*/
+/*######################## schema helpers ####################################*/
 const acceptedFilterTypes = ["String", "Number", "Boolean", "Date", "ObjectId"];
 
-// schema path -> filterable type (array paths use their element type)
+// schema path -> filterable type. Array paths use their element type; subdocument arrays and
+// single nested subdocuments are walked so "members.member" or "address.city" can be filtered.
 export const getFilterableSchemaFields = (schema: Schema): Record<string, string> => {
   const fields: Record<string, string> = {};
 
-  Object.entries(schema?.paths || {}).forEach(([key, value]: [string, any]) => {
-    let instance = value?.instance;
-    if (instance === "Array" && value?.embeddedSchemaType?.instance) instance = value.embeddedSchemaType.instance;
-    if (acceptedFilterTypes.includes(instance)) fields[key] = instance;
-  });
+  const walk = (current: Schema, prefix: string, depth: number) => {
+    Object.entries(current?.paths || {}).forEach(([key, value]: [string, any]) => {
+      const fullPath = `${prefix}${key}`;
+      if (value?.schema && depth < 5 && (value.$isMongooseDocumentArray || value.$isSingleNested)) {
+        walk(value.schema, `${fullPath}.`, depth + 1);
+        return;
+      }
 
+      let instance = value?.instance;
+      if (instance === "Array" && value?.embeddedSchemaType?.instance) instance = value.embeddedSchemaType.instance;
+      if (acceptedFilterTypes.includes(instance)) fields[fullPath] = instance;
+    });
+  };
+
+  walk(schema, "", 0);
   return fields;
 };
 
+type SchemaFieldInfo = { type?: string; ref?: string };
+
+const getFieldInfo = (schema: Schema | undefined, path: string): SchemaFieldInfo => {
+  const schemaType: any = schema?.path(path);
+  if (!schemaType) return {};
+  const element = schemaType.instance === "Array" ? schemaType.embeddedSchemaType : undefined;
+  return {
+    type: element?.instance ?? schemaType.instance,
+    ref: schemaType.options?.ref ?? element?.options?.ref,
+  };
+};
+
+/*######################## typed partial search ####################################*/
+const normalizeSearchField = (field: PartialFilterField) => (typeof field === "string" ? { path: field } : field);
+
+// "2025" -> whole year, "2025-03" -> month, "2025-03-14" -> day (server local time)
+const toDateRange = (text: string): { $gte: Date; $lt: Date } | undefined => {
+  const match = /^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?$/.exec(text.trim());
+  if (!match) return undefined;
+  const [year, month, day] = [Number(match[1]), match[2] ? Number(match[2]) - 1 : undefined, match[3] ? Number(match[3]) : undefined];
+  if (month !== undefined && (month < 0 || month > 11)) return undefined;
+  if (day !== undefined && (day < 1 || day > 31)) return undefined;
+
+  if (day !== undefined) return { $gte: new Date(year, month!, day), $lt: new Date(year, month!, day + 1) };
+  if (month !== undefined) return { $gte: new Date(year, month, 1), $lt: new Date(year, month + 1, 1) };
+  return { $gte: new Date(year, 0, 1), $lt: new Date(year + 1, 0, 1) };
+};
+
+// condition for one search field, or undefined when the search text cannot match its type
+const searchBranch = (text: string, path: string, info: SchemaFieldInfo): RecordUnknown | undefined => {
+  switch (info.type) {
+    case undefined: // not in the schema: regex, as in earlier versions
+    case "String":
+    case "Mixed":
+      return { [path]: { $regex: toSearchPattern(text), $options: "i" } };
+    case "Number": {
+      const num = Number(text);
+      return text.trim() !== "" && Number.isFinite(num) ? { [path]: num } : undefined;
+    }
+    case "Date": {
+      const range = toDateRange(text);
+      return range ? { [path]: range } : undefined;
+    }
+    case "Boolean": {
+      const lower = text.trim().toLowerCase();
+      if (["true", "yes", "1"].includes(lower)) return { [path]: true };
+      if (["false", "no", "0"].includes(lower)) return { [path]: false };
+      return undefined;
+    }
+    case "ObjectId":
+      return isObjectIdString(text.trim()) ? { [path]: new Types.ObjectId(text.trim()) } : undefined;
+    default:
+      return undefined;
+  }
+};
+
+const getSearchText = (search: unknown) => firstString(search)?.trim().slice(0, MAX_REGEX_LENGTH);
+
+// sync search condition: every field type except reference lookups (refFields)
+const buildSearchConditionSync = (search: unknown, fields: PartialFilterField[] | undefined, schema?: Schema): RecordUnknown | null => {
+  const text = getSearchText(search);
+  const searchFields = (fields || []).map(normalizeSearchField).filter((f) => f && f.path);
+  if (!text || !searchFields.length) return null;
+
+  const branches = searchFields
+    .map(({ path }) => searchBranch(text, path, getFieldInfo(schema, path)))
+    .filter((b): b is RecordUnknown => Boolean(b));
+
+  return branches.length ? { $or: branches } : MATCH_NOTHING;
+};
+
+/**
+ * Builds the `?search=` condition for the given fields, matching each field by its schema type.
+ * Reference fields given as { path, refFields } are searched by the referenced documents' fields.
+ * Returns null when there is nothing to search.
+ */
+export const buildSearchCondition = async (
+  search: unknown,
+  fields: PartialFilterField[] | undefined,
+  model: Model<any>,
+): Promise<RecordUnknown | null> => {
+  const text = getSearchText(search);
+  const searchFields = (fields || []).map(normalizeSearchField).filter((f) => f && f.path);
+  if (!text || !searchFields.length) return null;
+
+  const schema = model.schema;
+  const branches: RecordUnknown[] = [];
+
+  for (const { path, refFields } of searchFields) {
+    const info = getFieldInfo(schema, path);
+
+    if (refFields?.length && info.type === "ObjectId" && info.ref) {
+      try {
+        const refModel = model.db.model(info.ref);
+        const regex = { $regex: toSearchPattern(text), $options: "i" };
+        const docs = await refModel
+          .find({ $or: refFields.map((f) => ({ [f]: regex })) })
+          .select("_id")
+          .limit(MAX_REF_SEARCH_IDS)
+          .lean();
+        if (docs.length) branches.push({ [path]: { $in: docs.map((d: any) => d._id) } });
+      } catch {
+        // referenced model is not registered: skip this field
+      }
+      continue;
+    }
+
+    const branch = searchBranch(text, path, info);
+    if (branch) branches.push(branch);
+  }
+
+  return branches.length ? { $or: branches } : MATCH_NOTHING;
+};
+
+/*######################## Filter Helper ####################################*/
 // handle types
 const castValueByType = (raw: unknown, type: string, field: string): any => {
   if (raw === null || raw === "null") return null;
@@ -206,34 +362,32 @@ const castValueByType = (raw: unknown, type: string, field: string): any => {
     case "ObjectId":
       return toObjectId(str, field);
     case "Boolean":
-      if (str === "true" || str === "1") return true;
-      if (str === "false" || str === "0") return false;
-      return undefined;
+      // same as earlier versions: anything other than "true"/"1" is false
+      return str === "true" || str === "1";
     case "String":
     default:
       return str;
   }
 };
 
-export const filterHelper = <T extends RecordUnknown>(reqQuery: T, partialSearching: string[], schema: Schema): Partial<TFilter> => {
-  const query = { ...(reqQuery || {}) };
-  const schemaKeyWithTypes = getFilterableSchemaFields(schema);
-  const schemaKeys = Object.keys(schema?.paths || {});
+export const filterHelper = <T extends RecordUnknown>(
+  reqQuery: T,
+  partialSearching?: PartialFilterField[],
+  schema?: Schema,
+  options: FilterHelperOptions = {},
+): TFilter => {
+  const query: RecordUnknown = { ...(reqQuery || {}) };
+  for (const key of options.exclude || []) delete query[key];
+
+  const schemaKeyWithTypes = getFilterableSchemaFields(schema as Schema);
+  const schemaKeys = [...new Set([...Object.keys(schema?.paths || {}), ...Object.keys(schemaKeyWithTypes)])];
   const conditions: RecordUnknown[] = [];
 
   const { search, ids, ...rest } = pic(query, ["search", "ids", ...schemaKeys]);
 
   // Handle search queries (partial match)
-  const searchFields = (partialSearching || []).filter(Boolean);
-  const searchText = firstString(search)?.trim().slice(0, MAX_REGEX_LENGTH);
-  if (searchText && searchFields.length > 0) {
-    const pattern = escapeRegex(searchText);
-    conditions.push({
-      $or: searchFields.map((field) => ({
-        [field]: { $regex: pattern, $options: "i" },
-      })),
-    });
-  }
+  const searchCondition = options.searchCondition !== undefined ? options.searchCondition : buildSearchConditionSync(search, partialSearching, schema);
+  if (searchCondition) conditions.push(searchCondition);
 
   // Handle multiple ids (?ids=a,b  |  ?ids=a&ids=b  |  body { ids: [a, b] })
   if (ids !== undefined && ids !== null && ids !== "") {

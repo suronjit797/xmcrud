@@ -6,7 +6,7 @@ import { Router } from "express"
 // name:                  cache namespace for this module (use it in other modules' invalidateCache)
 // ioredis:               Redis are optional if need redis caching
 // middlewares:           middlewares are optional for each auto generated routes
-// notFoundMiddleware:    disables a route (removeMany also disables POST /delete-many)
+// notFoundMiddleware:    disables a route (removeMany = DELETE /delete-many, removeManyPost = POST /delete-many)
 
 const partialFilterItems: string[] = []; // e.g. ["name", "email"]
 const {{name}}Router = Router()
@@ -20,6 +20,7 @@ const crudRouter =  generateCrudRoutes({
     getAll: [partialFilterMiddlewares(partialFilterItems)],
     updateMany: [notFoundMiddleware],
     removeMany: [notFoundMiddleware],
+    removeManyPost: [notFoundMiddleware],
     // create: [],
     // update: [],
     // remove: [],

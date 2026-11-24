@@ -124,7 +124,7 @@ generateCrudController({mongooseModel:  mongoose model,
   cachedTime: number = 600,
   logger?: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
   protectedFields: []
-  paginationConfig:{maxLimit: 100, maxSkip: 100000, allowedSelect?: string[], allowedPopulate?: string[]}
+  paginationConfig:{maxLimit: 100, maxSkip: 100000, allowNoLimit?: boolean, allowedSelect?: string[], allowedPopulate?: string[]}
   }) 
 
 */
@@ -199,7 +199,8 @@ const router = generateCrudRoutes({
   name: "User",
   basePath: "/users",
   middlewares: {
-    removeMany: [notFoundMiddleware], // hides both DELETE and POST /delete-many (set removeManyPost to control POST separately)
+    removeMany: [notFoundMiddleware], // hide DELETE /delete-many
+    removeManyPost: [notFoundMiddleware], // hide POST /delete-many
     updateMany: [notFoundMiddleware], // hide Update Many route
   },
 });
@@ -222,7 +223,7 @@ const userRouter = generateCrudRoutes({
   ioredis: redisClient,
   cachedTime: 600, // in seconds (default: 10 minutes)
   // optionals
-  invalidateCache: ["orders"], // also clear these modules' cache (their `name`) on every write
+  invalidateCache: ["orders"], // also clear every cache key containing these words (another module's name or route path) on every write
   middlewares: {},
   logger: Logger  //logger logic {successLogger: (message:string)=> void, errorLogger:(message:string)=>void}
   protectedFields:[]  // for update
@@ -242,6 +243,8 @@ const userRouter = generateCrudRoutes({
 | `partialFilterMiddlewares(keys)`                    | Enables partial search on selected string fields |
 | `errorHandler`                                      | Express error middleware (ApiError, validation, cast, duplicate key) |
 | `stripProtectedFields(body, fields)`                | Removes protected fields from an update body, including `$set`/`$inc`/... |
+| `buildSearchCondition(search, fields, model)`       | Async `?search=` condition with typed fields and reference lookups |
+| `writableQueryMiddleware`                           | Express 5: keeps values that middlewares assign to `req.query` |
 
 Example:
 
@@ -309,7 +312,7 @@ GET /users?sortBy=createdAt&sortOrder=asc&page=2&limit=20
 | `sortBy`    | Sort by field                           |
 | `sortOrder` | "asc", "ascending", "desc", descending" |
 | `page`      | Page number (default: 1)                |
-| `limit`     | Documents per page (default: 10, max: `maxLimit`) |
+| `limit`     | Documents per page (default: 10, max: `maxLimit`; `0` = no limit unless `allowNoLimit: false`) |
 
 ---
 
@@ -321,7 +324,18 @@ Supports full-text partial search:
 GET /users?search=pal
 ```
 
-The search text is matched literally (regex characters are escaped). Use `?ids=id1,id2` to filter by several ids.
+Each search field is matched by its schema type:
+
+| Field type | `?search=` matches |
+| ---------- | ------------------ |
+| String (or not in the schema) | case-insensitive regex; text that is not a valid regex (e.g. `(`) is matched literally |
+| Number | exact number (`search=42`) |
+| Date | whole year / month / day (`2025`, `2025-03`, `2025-03-14`) |
+| Boolean | `true/false/yes/no/1/0` |
+| ObjectId | exact id |
+| Reference with `refFields` | documents whose referenced record matches |
+
+Use `?ids=id1,id2` to filter by several ids. Fields inside subdocument arrays and nested subdocuments can be filtered too: `?members.member=<id>`, `?address.city=Dhaka`.
 
 You can enable search fields globally:
 
@@ -331,26 +345,42 @@ generateCrudRoutes({
   name: "User",
   basePath: "/users",
   middlewares: {
-    getAll: [partialFilterMiddlewares(["name", "email"])],
+    getAll: [partialFilterMiddlewares(["name", "email", "age", "createdAt", { path: "company", refFields: ["name"] }])],
   },
 });
 ```
 
+### 🛡️ Scoping (row-level access)
+
+Set `req.scopeFilter` in a middleware; it is AND-ed into every generated query (list, single, update, delete, bulk) and kept in the cache key, so scoped users never share cached data:
+
+```ts
+const onlyOwnAgency: RequestHandler = (req, res, next) => {
+  if (req.user.role === "agent") req.scopeFilter = { agency: req.user.agency };
+  next();
+};
+
+generateCrudRoutes({ mongooseModel: ClientModel, name: "clients", middlewares: { getAll: [auth, onlyOwnAgency], getSingle: [auth, onlyOwnAgency] } });
+```
+
+On Express 5, values assigned to `req.query` are lost (it is rebuilt on every read). Prefer `req.scopeFilter`, or register `app.use(writableQueryMiddleware)` before such middlewares.
+
 ---
 
-## ⬆️ Upgrading to v2
+## ⬆️ Upgrading from 1.4.x to 1.5
 
-v2 fixes several security and data-safety issues. Most apps need no change; check these:
+1.5 is a drop-in update: no app code has to change. Behaviour that differs from 1.4.x is limited to bug fixes:
 
-- Node.js **20+** is required.
-- Bulk routes (`update-many`, `delete-many`) return `400` when the filter is empty or matches no known field.
-- `removeMany` middlewares now also guard `POST /delete-many` unless `removeManyPost` is set.
-- `?select=+field` is ignored; unknown `populate` paths are dropped (use `paginationConfig.allowedSelect` / `allowedPopulate` to control them).
-- Protected fields are stripped from `$set`, `$inc`, ... in updates, and from `update-many` bodies.
-- `DELETE /:id` returns `404` when the document does not exist; `update-many` returns `404` only when nothing matches.
-- Invalid ObjectIds in filters return `400`; `?limit=0` or invalid values fall back to the default limit.
-- Redis keys are now `xmcrud:<name>:...`; `name` is the cache namespace and `invalidateCache` takes other modules' `name`s. Old keys simply expire.
-- List messages no longer append `s` (e.g. `users fetched successfully`).
+- Bulk routes (`update-many`, `delete-many`) return `400` when the filter is empty or has no known field, instead of updating or deleting the whole collection.
+- `?ids=a,b` (comma separated) is applied; invalid ObjectIds return `400` instead of `500`.
+- Filters on fields inside subdocument arrays (`members.member`) are applied; they were ignored before.
+- `?search=` no longer crashes on invalid regex text, and number/date/boolean/ObjectId search fields work instead of failing.
+- `?select=+field` is ignored; unknown `populate` paths are dropped instead of failing with `500`.
+- Protected fields are also stripped inside `$set`/`$inc`/... on `PUT/PATCH /:id`.
+- Cache is cleared after a successful write, with SCAN instead of KEYS, and never deletes BullMQ (`bull:`) keys. Redis errors no longer fail requests.
+- Generated routes cache under `xmcrud:<name>:<route path>?<query>`; keys still contain the route path, so path-based invalidation keeps working. Old keys expire on their own.
+
+New, opt-in: typed and reference search (`refFields`), `req.scopeFilter`, `writableQueryMiddleware`, `errorHandler`, `filterHelper(query, fields, schema, { exclude, searchCondition })`, `paginationConfig.allowNoLimit / allowedSelect / allowedPopulate`.
 
 See [version.md](version.md) for the full list.
 

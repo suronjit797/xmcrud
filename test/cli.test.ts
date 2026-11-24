@@ -54,6 +54,7 @@ describe("cli", () => {
     const routes = fs.readFileSync(path.join(moduleDir, "orderItem.routes.ts"), "utf8");
     assert.match(routes, /mongooseModel: OrderItemModel/);
     assert.match(routes, /const partialFilterItems: string\[\] = \[\];/);
+    assert.match(routes, /removeManyPost: \[notFoundMiddleware\]/);
     assert.doesNotMatch(routes, /\{\{/);
   });
 

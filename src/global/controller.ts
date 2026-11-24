@@ -1,13 +1,21 @@
 import { Request } from "express";
 import { Types } from "mongoose";
 import { ApiError, handleError, sendResponse, stripProtectedFields } from "../helpers/globalHelper";
-import { filterHelper, paginationHelper, paginationKeys, pic } from "../helpers/queryHelper";
+import { buildSearchCondition, filterHelper, paginationHelper } from "../helpers/queryHelper";
 import redisGenerateCacheKey, { delIoredisCache } from "../helpers/redisCacheKeyGenerator";
-import { GlobalControllerOptions, GlobalControllerReturn, IMeta } from "../Types";
+import { GlobalControllerOptions, GlobalControllerReturn, IMeta, PartialFilterField, TFilter } from "../Types";
 
 const defaultProtectedFields = ["_id", "createdAt", "updatedAt", "__v"];
 
 const isValidId = (id: unknown) => typeof id === "string" && /^[a-f\d]{24}$/i.test(id);
+
+const hasScope = (req: Request) => Boolean(req.scopeFilter && Object.keys(req.scopeFilter).length);
+
+// AND the request's scopeFilter (if any) into a filter
+const withScope = (req: Request, filter: TFilter): TFilter => {
+  if (!hasScope(req)) return filter;
+  return Object.keys(filter).length ? { $and: [filter, req.scopeFilter] } : { ...req.scopeFilter };
+};
 
 export const generateCrudController = <TType extends object>({
   mongooseModel,
@@ -21,13 +29,13 @@ export const generateCrudController = <TType extends object>({
 }: GlobalControllerOptions<TType>): GlobalControllerReturn => {
   const schema = mongooseModel.schema;
   const allProtectedFields = [...(protectedFields || []), ...defaultProtectedFields];
-  const cacheQueryKeys = [...paginationKeys, "search", "ids", ...Object.keys(schema?.paths || {})];
 
   // cache helpers: a redis failure is logged and treated as a cache miss, never a failed request
   const logCacheError = (action: string, error: unknown) =>
     logger?.errorLogger?.(`(${name}) redis ${action} failed: ${error instanceof Error ? error.message : String(error)}`);
 
-  const getCacheKey = (req: Request) => redisGenerateCacheKey(req, { name, query: pic(req.query as Record<string, unknown>, cacheQueryKeys) });
+  // the full query is part of the key (as in earlier versions), plus the scope, so scoped users never share entries
+  const getCacheKey = (req: Request) => redisGenerateCacheKey(req, { name, scope: hasScope(req) ? req.scopeFilter : undefined });
 
   const readCache = async <T>(key: string): Promise<T | null> => {
     if (!ioredis) return null;
@@ -49,10 +57,11 @@ export const generateCrudController = <TType extends object>({
     }
   };
 
-  const clearCache = async () => {
+  // runs after a successful write; `extra` adds the record id, like earlier versions
+  const clearCache = async (...extra: string[]) => {
     if (!ioredis) return;
     try {
-      await delIoredisCache(ioredis, name, invalidateCache);
+      await delIoredisCache(ioredis, name, [...invalidateCache, ...extra.filter(Boolean)]);
     } catch (error) {
       logCacheError("invalidate", error);
     }
@@ -66,6 +75,16 @@ export const generateCrudController = <TType extends object>({
   const assertValidId = (req: Request) => {
     if (!isValidId(req.params.id)) throw new ApiError(400, "Invalid ID format");
   };
+
+  // filter from query/body, with typed + reference search
+  const buildFilter = async (req: Request, source: Record<string, unknown>) => {
+    const fields = req.partialFilter as PartialFilterField[] | undefined;
+    const searchCondition = await buildSearchCondition(source?.search, fields, mongooseModel);
+    return filterHelper(source, fields, schema, { searchCondition });
+  };
+
+  // single-document queries use findById & co. unless the request is scoped
+  const idFilter = (req: Request): TFilter => withScope(req, { _id: new Types.ObjectId(String(req.params.id)) });
 
   return {
     // create
@@ -87,7 +106,7 @@ export const generateCrudController = <TType extends object>({
 
         if (!values) {
           const pagination = paginationHelper(req.query as Record<string, unknown>, paginationConfig, schema);
-          const filter = filterHelper(req.query as Record<string, unknown>, req.partialFilter || [], schema);
+          const filter = withScope(req, await buildFilter(req, req.query as Record<string, unknown>));
 
           const { page, limit, skip, sortCondition, populate, select } = pagination;
 
@@ -105,7 +124,7 @@ export const generateCrudController = <TType extends object>({
           req,
           res,
           status: 200,
-          payload: { success: true, message: `${name} fetched successfully`, data: values.data, meta: values.meta },
+          payload: { success: true, message: `${name}s fetched successfully`, data: values.data, meta: values.meta },
           logger,
         });
       } catch (error) {
@@ -123,7 +142,7 @@ export const generateCrudController = <TType extends object>({
         if (!data) {
           const { populate, select } = paginationHelper(req.query as Record<string, unknown>, paginationConfig, schema);
 
-          let query = mongooseModel.findById(req.params.id);
+          let query = hasScope(req) ? mongooseModel.findOne(idFilter(req)) : mongooseModel.findById(req.params.id);
           if (populate.length) query = query.populate(populate);
           if (select) query = query.select(select);
 
@@ -144,48 +163,48 @@ export const generateCrudController = <TType extends object>({
         assertValidId(req);
 
         const updateBody = stripProtectedFields(req.body, allProtectedFields);
-        const data = await mongooseModel.findByIdAndUpdate(req.params.id, updateBody, { returnDocument: "after", runValidators: true });
+        const options = { returnDocument: "after" as const, runValidators: true };
+        const data = hasScope(req)
+          ? await mongooseModel.findOneAndUpdate(idFilter(req), updateBody, options)
+          : await mongooseModel.findByIdAndUpdate(req.params.id, updateBody, options);
 
         if (!data) throw new ApiError(404, `${name} not found`);
-        await clearCache();
+        await clearCache(String(req.params.id));
         sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} updated successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
     },
 
-    // update many
+    // update many (filter from query string; body applied as in earlier versions)
     updateMany: async (req, res, next) => {
       try {
-        const filter = filterHelper(req.query as Record<string, unknown>, req.partialFilter || [], schema);
-        requireBulkFilter(filter);
-
-        const updateBody = stripProtectedFields(req.body, allProtectedFields);
-        if (!Object.keys(updateBody).length) throw new ApiError(400, "Update body is empty");
+        const queryFilter = await buildFilter(req, req.query as Record<string, unknown>);
+        requireBulkFilter(queryFilter);
+        const filter = withScope(req, queryFilter);
 
         // capture the matched ids first: the update may change the fields the filter uses
         const ids = (await mongooseModel.find(filter).select("_id").lean()).map((doc: any) => doc._id as Types.ObjectId);
-        if (!ids.length) throw new ApiError(404, `${name} not found`);
+        if (!ids.length) throw new ApiError(404, "not found");
 
-        await mongooseModel.updateMany({ _id: { $in: ids } }, updateBody, { runValidators: true });
+        await mongooseModel.updateMany({ _id: { $in: ids } }, req.body ?? {}, { runValidators: true });
         await clearCache();
 
         const data = await mongooseModel.find({ _id: { $in: ids } });
-        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} updated successfully`, data }, logger });
+        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name}s updated successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
     },
 
-    // remove
+    // remove (responds 200 with null data when the document does not exist, as in earlier versions)
     remove: async (req, res, next) => {
       try {
         assertValidId(req);
 
-        const data = await mongooseModel.findByIdAndDelete(req.params.id);
+        const data = hasScope(req) ? await mongooseModel.findOneAndDelete(idFilter(req)) : await mongooseModel.findByIdAndDelete(req.params.id);
 
-        if (!data) throw new ApiError(404, `${name} not found`);
-        await clearCache();
+        if (data) await clearCache(String(req.params.id));
         sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} deleted successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
@@ -195,12 +214,12 @@ export const generateCrudController = <TType extends object>({
     // remove many (filter from query string)
     removeMany: async (req, res, next) => {
       try {
-        const filter = filterHelper(req.query as Record<string, unknown>, req.partialFilter || [], schema);
-        requireBulkFilter(filter);
+        const queryFilter = await buildFilter(req, req.query as Record<string, unknown>);
+        requireBulkFilter(queryFilter);
 
-        const data = await mongooseModel.deleteMany(filter);
+        const data = await mongooseModel.deleteMany(withScope(req, queryFilter));
         await clearCache();
-        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} deleted successfully`, data }, logger });
+        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name}s deleted successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }
@@ -209,12 +228,12 @@ export const generateCrudController = <TType extends object>({
     // remove many (filter from body)
     removeManyPost: async (req, res, next) => {
       try {
-        const filter = filterHelper(req.body ?? {}, req.partialFilter || [], schema);
-        requireBulkFilter(filter);
+        const bodyFilter = await buildFilter(req, req.body ?? {});
+        requireBulkFilter(bodyFilter);
 
-        const data = await mongooseModel.deleteMany(filter);
+        const data = await mongooseModel.deleteMany(withScope(req, bodyFilter));
         await clearCache();
-        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name} deleted successfully`, data }, logger });
+        sendResponse({ req, res, status: 200, payload: { success: true, message: `${name}s deleted successfully`, data }, logger });
       } catch (error) {
         handleError(error, next, logger, name);
       }

@@ -17,3 +17,6 @@ note*
 # keep build scripts even though they match the patterns above
 !scripts/
 !scripts/**
+
+# local-only notes
+VERSION_HISTORY.md

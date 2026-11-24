@@ -3,44 +3,64 @@ import assert from "node:assert/strict";
 import { delIoredisCache, redisGenerateCacheKey } from "../src";
 import { createFakeRedis } from "./support/fakeRedis";
 
-const req = (baseUrl: string, path: string, query: Record<string, unknown> = {}) => ({ baseUrl, path, query, params: {} }) as any;
+const req = (baseUrl: string, path: string, query: Record<string, unknown> = {}, params: Record<string, string> = {}) =>
+  ({ baseUrl, path, query, params }) as any;
 
 describe("redisGenerateCacheKey", () => {
-  it("namespaces keys by name and includes the full path", () => {
-    assert.equal(redisGenerateCacheKey(req("/api", "/users/"), { name: "users" }), "xmcrud:users:api:users");
-    assert.equal(redisGenerateCacheKey(req("/api", "/users/abc"), { name: "users" }), "xmcrud:users:api:users:abc");
+  describe("without options (same key as 1.4.x)", () => {
+    it("uses the mount path, params and sorted query", () => {
+      assert.equal(redisGenerateCacheKey(req("/api/v1/users", "/abc", { page: "2", a: "1" }, { id: "abc" })), "api:v1:users:id=abc?a=1&page=2");
+      assert.equal(redisGenerateCacheKey(req("", "/")), "root");
+    });
   });
 
-  it("gives different keys to routers mounted on the same path", () => {
-    const users = redisGenerateCacheKey(req("/api", "/users/"), { name: "users" });
-    const orders = redisGenerateCacheKey(req("/api", "/orders/"), { name: "orders" });
-    assert.notEqual(users, orders);
-  });
+  describe("with options (generated routes)", () => {
+    it("namespaces keys by name and includes the full path", () => {
+      assert.equal(redisGenerateCacheKey(req("/api", "/users/"), { name: "users" }), "xmcrud:users:api:users");
+      assert.equal(redisGenerateCacheKey(req("/api", "/users/abc"), { name: "users" }), "xmcrud:users:api:users:abc");
+    });
 
-  it("sorts query params and serializes arrays and objects", () => {
-    const key = redisGenerateCacheKey(req("/api", "/users", { b: "2", a: ["1", "3"], c: { x: 1 } }), { name: "users" });
-    assert.equal(key, 'xmcrud:users:api:users?a=1,3&b=2&c={"x":1}');
-  });
+    it("gives different keys to routers mounted on the same path", () => {
+      const users = redisGenerateCacheKey(req("/api", "/users/"), { name: "users" });
+      const orders = redisGenerateCacheKey(req("/api", "/orders/"), { name: "orders" });
+      assert.notEqual(users, orders);
+    });
 
-  it("uses the given query instead of req.query", () => {
-    const key = redisGenerateCacheKey(req("/api", "/users", { junk: "1", page: "2" }), { name: "users", query: { page: "2" } });
-    assert.equal(key, "xmcrud:users:api:users?page=2");
-  });
+    it("keeps the full query, sorted, with arrays and objects serialized", () => {
+      const key = redisGenerateCacheKey(req("/api", "/users", { b: "2", a: ["1", "3"], c: { x: 1 } }), { name: "users" });
+      assert.equal(key, 'xmcrud:users:api:users?a=1,3&b=2&c={"x":1}');
+    });
 
-  it("falls back to the mount path as name", () => {
-    assert.equal(redisGenerateCacheKey(req("/v1/users", "/")), "xmcrud:v1:users:v1:users");
-    assert.equal(redisGenerateCacheKey(req("", "/")), "xmcrud:root:root");
+    it("adds the scope so scoped users never share an entry", () => {
+      const a = redisGenerateCacheKey(req("/api", "/users"), { name: "users", scope: { agency: "a" } });
+      const b = redisGenerateCacheKey(req("/api", "/users"), { name: "users", scope: { agency: "b" } });
+      assert.notEqual(a, b);
+      assert.equal(a, 'xmcrud:users:api:users#scope={"agency":"a"}');
+    });
+
+    it("still contains the route path so path-based invalidation matches", () => {
+      assert.ok(redisGenerateCacheKey(req("/api/v1/bankings", "/"), { name: "Banking" }).includes("api:v1:bankings"));
+    });
   });
 });
 
 describe("delIoredisCache", () => {
-  it("deletes only the given name and invalidateCache names", async () => {
+  it("deletes every key containing the name or an invalidateCache entry (1.4.x matching)", async () => {
     const redis = createFakeRedis();
-    for (const key of ["xmcrud:users:a", "xmcrud:users:b", "xmcrud:superusers:a", "xmcrud:orders:a", "xmcrud:posts:a"]) redis.store.set(key, "1");
+    for (const key of ["xmcrud:users:a", "xmcrud:superusers:a", "api:v1:orders?page=1", "custom:orders", "xmcrud:posts:a"]) redis.store.set(key, "1");
 
     await delIoredisCache(redis, "users", ["orders"]);
 
-    assert.deepEqual([...redis.store.keys()].sort(), ["xmcrud:posts:a", "xmcrud:superusers:a"]);
+    assert.deepEqual([...redis.store.keys()], ["xmcrud:posts:a"]);
+  });
+
+  it("never deletes BullMQ keys", async () => {
+    const redis = createFakeRedis();
+    for (const key of ["bull:onboarding:1", "bullmq:onboarding:meta", "xmcrud:onboarding:api:onboarding"]) redis.store.set(key, "1");
+
+    await delIoredisCache(redis, "onboarding");
+
+    assert.deepEqual([...redis.store.keys()].sort(), ["bull:onboarding:1", "bullmq:onboarding:meta"]);
   });
 
   it("uses SCAN (never KEYS) and walks every page", async () => {

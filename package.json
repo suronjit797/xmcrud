@@ -1,6 +1,6 @@
 {
   "name": "xmcrud",
-  "version": "2.0.0",
+  "version": "1.5.0",
   "description": "A lightweight helper library for building Express.js routes, controllers, advanced query with mongoose, and Redis-enhanced middleware with optional Redis support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -77,7 +77,7 @@
     }
   },
   "dependencies": {
-    "commander": "^14.0.2",
+    "commander": "^11.1.0",
     "fs-extra": "^11.3.3"
   },
   "devDependencies": {
@@ -93,6 +93,6 @@
     "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=16.0.0"
   }
 }

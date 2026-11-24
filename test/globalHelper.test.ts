@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { ApiError, errorHandler, partialFilterMiddlewares, sendResponse, stripProtectedFields } from "../src";
+import { ApiError, errorHandler, partialFilterMiddlewares, sendResponse, stripProtectedFields, writableQueryMiddleware } from "../src";
 
 // tiny response double that captures status and json
 const createRes = () => {
@@ -51,9 +51,19 @@ describe("partialFilterMiddlewares", () => {
   it("sets req.partialFilter without empty names", () => {
     const req: any = {};
     let called = false;
-    partialFilterMiddlewares(["name", ""])(req, {} as any, () => (called = true));
-    assert.deepEqual(req.partialFilter, ["name"]);
+    partialFilterMiddlewares(["name", "", { path: "owner", refFields: ["name"] }, { path: "" }])(req, {} as any, () => (called = true));
+    assert.deepEqual(req.partialFilter, ["name", { path: "owner", refFields: ["name"] }]);
     assert.ok(called);
+  });
+});
+
+describe("writableQueryMiddleware", () => {
+  it("replaces a getter-based req.query with a writable copy", () => {
+    const req: any = {};
+    Object.defineProperty(req, "query", { get: () => ({ a: "1" }), configurable: true });
+    writableQueryMiddleware(req, {} as any, () => {});
+    req.query.b = "2";
+    assert.deepEqual(req.query, { a: "1", b: "2" });
   });
 });
 
@@ -78,6 +88,23 @@ describe("errorHandler", () => {
     const dup = handle({ code: 11000, keyValue: { email: "a" } });
     assert.equal(dup.statusCode, 409);
     assert.deepEqual(dup.body.errorMessages, [{ path: "email", message: "email already exists" }]);
+  });
+
+  it("uses the status of any error class that carries one (e.g. an app's own ApiError)", () => {
+    class AppError extends Error {
+      constructor(
+        public statusCode: number,
+        message: string,
+      ) {
+        super(message);
+      }
+    }
+    const res = handle(new AppError(403, "Forbidden here"));
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.message, "Forbidden here");
+    assert.equal(handle(Object.assign(new Error("gone"), { status: 410 })).statusCode, 410);
+    // 5xx from unknown classes keeps the generic message
+    assert.equal(handle(Object.assign(new Error("db password leaked"), { statusCode: 503 })).body.message, "Something went wrong");
   });
 
   it("hides unknown error details", () => {

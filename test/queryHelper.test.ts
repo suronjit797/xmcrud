@@ -1,9 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { Types } from "mongoose";
-import { filterHelper, paginationHelper, pic } from "../src";
+import { buildSearchCondition, filterHelper, paginationHelper, pic } from "../src";
 import { normalizeSortOrder } from "../src/helpers/queryHelper";
-import { createTestSchema, OTHER_ID, VALID_ID } from "./support/fakeModel";
+import { createFakeModel, createTestSchema, OTHER_ID, VALID_ID } from "./support/fakeModel";
 
 const schema = createTestSchema();
 const filter = (query: Record<string, unknown>, search: string[] = []) => filterHelper(query, search, schema);
@@ -44,9 +44,12 @@ describe("filterHelper", () => {
 
     it("skips values that cannot be cast instead of matching missing fields", () => {
       assert.deepEqual(filter({ age: "abc" }), {});
-      assert.deepEqual(filter({ active: "yes" }), {});
       assert.deepEqual(filter({ born: "not-a-date" }), {});
       assert.deepEqual(filter({ age: "" }), {});
+    });
+
+    it("treats any boolean value other than true/1 as false (as in 1.4.x)", () => {
+      assert.deepEqual(firstCondition({ active: "yes" }), { active: false });
     });
 
     it("rejects invalid ObjectIds with 400", () => {
@@ -56,6 +59,13 @@ describe("filterHelper", () => {
 
     it("uses the element type of array fields", () => {
       assert.deepEqual(firstCondition({ tags: "a" }), { tags: "a" });
+    });
+
+    it("filters fields inside subdocument arrays and nested subdocuments", () => {
+      assert.ok(firstCondition({ "members.member": VALID_ID })["members.member"] instanceof Types.ObjectId);
+      assert.deepEqual(firstCondition({ "members.status": "active" }), { "members.status": "active" });
+      assert.deepEqual(firstCondition({ "address.city": "Dhaka" }), { "address.city": "Dhaka" });
+      assert.deepEqual(firstCondition({ "address.zip_gte": "1000" }), { "address.zip": { $gte: 1000 } });
     });
   });
 
@@ -122,9 +132,33 @@ describe("filterHelper", () => {
       });
     });
 
-    it("escapes regex characters", () => {
-      const { $or } = firstCondition({ search: "a.b(" }, ["name"]);
-      assert.equal($or[0].name.$regex, "a\\.b\\(");
+    it("escapes the text only when it is not a valid regex", () => {
+      assert.equal(firstCondition({ search: "a.b(" }, ["name"]).$or[0].name.$regex, "a\\.b\\(");
+      // valid patterns are kept, as in 1.4.x, so apps that escape before calling are not escaped twice
+      assert.equal(firstCondition({ search: "john\\.doe" }, ["name"]).$or[0].name.$regex, "john\\.doe");
+    });
+
+    it("matches each field by its schema type", () => {
+      const fields = ["name", "age", "born", "active", "owner", "unknownField"];
+      assert.deepEqual(
+        firstCondition({ search: "42" }, fields).$or.map((b: any) => Object.keys(b)[0]),
+        ["name", "age", "unknownField"],
+      );
+      assert.deepEqual(firstCondition({ search: "42" }, ["age"]).$or[0], { age: 42 });
+
+      const year = firstCondition({ search: "2025" }, ["born"]).$or[0].born;
+      assert.equal(year.$gte.getFullYear(), 2025);
+      assert.equal(year.$lt.getFullYear(), 2026);
+      const day = firstCondition({ search: "2025-03-14" }, ["born"]).$or[0].born;
+      assert.equal(day.$lt.getTime() - day.$gte.getTime(), 24 * 60 * 60 * 1000);
+
+      assert.deepEqual(firstCondition({ search: "yes" }, ["active"]).$or[0], { active: true });
+      assert.ok(firstCondition({ search: VALID_ID }, ["owner"]).$or[0].owner instanceof Types.ObjectId);
+      assert.ok(firstCondition({ search: VALID_ID }, ["members.member"]).$or[0]["members.member"] instanceof Types.ObjectId);
+    });
+
+    it("matches nothing when no field type can match the text", () => {
+      assert.deepEqual(firstCondition({ search: "abc" }, ["age", "active"]), { _id: { $in: [] } });
     });
 
     it("ignores search without fields or with empty field names", () => {
@@ -136,6 +170,43 @@ describe("filterHelper", () => {
       const { $or } = firstCondition({ search: ["a", "b"] }, ["name"]);
       assert.equal($or[0].name.$regex, "a");
     });
+  });
+});
+
+describe("filterHelper options", () => {
+  it("excludes keys", () => {
+    assert.deepEqual(filterHelper({ role: "a", age: "1" }, [], schema, { exclude: ["role"] }), { $and: [{ age: 1 }] });
+  });
+
+  it("uses a given searchCondition instead of building one", () => {
+    const searchCondition = { $or: [{ name: "x" }] };
+    assert.deepEqual(filterHelper({ search: "jo" }, ["name"], schema, { searchCondition }), { $and: [searchCondition] });
+    assert.deepEqual(filterHelper({ search: "jo" }, ["name"], schema, { searchCondition: null }), {});
+  });
+
+  it("accepts a missing partial filter and schema", () => {
+    assert.deepEqual(filterHelper({ search: "jo" }, undefined, schema), {});
+    assert.deepEqual(filterHelper({ age: "1" }, undefined, undefined as any), {});
+  });
+});
+
+describe("buildSearchCondition", () => {
+  it("searches references by the referenced documents' fields", async () => {
+    const owner = createFakeModel(createTestSchema(), { find: [{ _id: OTHER_ID }] });
+    const { model } = createFakeModel(schema, {}, { Owner: owner.model });
+    const condition: any = await buildSearchCondition("acme", ["name", { path: "owner", refFields: ["name", "email"] }], model);
+
+    assert.deepEqual(condition.$or[1], { owner: { $in: [OTHER_ID] } });
+    assert.deepEqual(owner.callsOf("find")[0].args[0], {
+      $or: [{ name: { $regex: "acme", $options: "i" } }, { email: { $regex: "acme", $options: "i" } }],
+    });
+  });
+
+  it("skips unregistered reference models and returns null without search", async () => {
+    const { model } = createFakeModel(schema);
+    assert.deepEqual(await buildSearchCondition("acme", [{ path: "owner", refFields: ["name"] }], model), { _id: { $in: [] } });
+    assert.equal(await buildSearchCondition("", ["name"], model), null);
+    assert.equal(await buildSearchCondition("acme", [], model), null);
   });
 });
 
@@ -151,8 +222,14 @@ describe("paginationHelper", () => {
       assert.deepEqual(result.sortCondition, { createdAt: -1 });
     });
 
-    it("falls back to the default limit for 0, negative and invalid values", () => {
-      for (const limit of ["0", "-5", "abc", ""]) assert.equal(paginate({ limit }).limit, 10, `limit=${limit}`);
+    it("keeps 1.4.x behaviour: limit=0 means no limit, negative values are made positive", () => {
+      assert.equal(paginate({ limit: "0" }).limit, 0);
+      assert.equal(paginate({ limit: "-5" }).limit, 5);
+    });
+
+    it("uses the default limit for limit=0 when allowNoLimit is false, and for invalid values", () => {
+      assert.equal(paginate({ limit: "0" }, { allowNoLimit: false }).limit, 10);
+      for (const limit of ["abc", ""]) assert.equal(paginate({ limit }).limit, 10, `limit=${limit}`);
     });
 
     it("caps limit at maxLimit", () => {
@@ -204,6 +281,10 @@ describe("paginationHelper", () => {
       assert.deepEqual(paginate({ populate: "owner.company.country owner.manager" }).populate, [
         { path: "owner", populate: [{ path: "company", populate: [{ path: "country" }] }, { path: "manager" }] },
       ]);
+    });
+
+    it("keeps a dotted path that is a schema path (subdocument array) as one path", () => {
+      assert.deepEqual(paginate({ populate: "members.member owner" }).populate, [{ path: "members.member" }, { path: "owner" }]);
     });
 
     it("applies allowedPopulate", () => {
